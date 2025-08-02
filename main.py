@@ -7,13 +7,18 @@ import os
 import logging
 from datetime import datetime
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("DB_NAME", "chatbot_db")
 FAQ_COLLECTION = os.getenv("FAQ_COLLECTION", "faqs")
 LOGS_COLLECTION = os.getenv("LOGS_COLLECTION", "logs")
 ADMIN_USERS_COLLECTION = os.getenv("ADMIN_USERS_COLLECTION", "admin_users")
-NLP_MODEL_NAME = os.getenv("NLP_MODEL_NAME", "paraphrase-multilingual-MiniLM-L12-v2")
+NLP_MODEL_NAME = os.getenv("NLP_MODEL_NAME", "paraphrase-multilingual-MiniLM-L12-v2") # Good for multilingual
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -43,20 +48,27 @@ async def startup_db_client():
     global client, db, nlp_model
     try:
         logger.info("Connecting to MongoDB...")
-        client = MongoClient(MONGO_URI)
+        # Use a timeout to prevent indefinite blocking if MongoDB is unreachable
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         client.admin.command('ping') # Test connection
         db = client[DB_NAME]
         logger.info(f"Connected to MongoDB: {DB_NAME}")
 
+        # Ensure collections exist (MongoDB creates them on first insert if not present)
+        # You might want to add indexing here for performance on `embedding` field later
+        # For vector search, you'd typically use a vector search index feature of MongoDB Atlas
+        # or perform brute-force search in memory for small datasets.
+
         logger.info(f"Loading NLP model: {NLP_MODEL_NAME}...")
         nlp_model = SentenceTransformer(NLP_MODEL_NAME)
         logger.info("NLP model loaded successfully.")
+
     except ConnectionFailure as e:
         logger.error(f"MongoDB connection failed: {e}")
         # In a real app, you might want to exit or retry here
-        raise HTTPException(status_code=500, detail="Could not connect to database.")
+        raise HTTPException(status_code=500, detail="Could not connect to database. Check MONGO_URI and network access.")
     except Exception as e:
-        logger.error(f"Failed to load NLP model or other startup error: {e}")
+        logger.error(f"Failed to load NLP model or other startup error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Backend startup failed.")
 
 @app.on_event("shutdown")
@@ -118,7 +130,7 @@ async def chat_with_bot(query: ChatQuery):
         user_embedding = nlp_model.encode(user_query_text, convert_to_tensor=False).tolist()
         logger.info(f"Generated embedding for query: {user_query_text[:30]}...")
     except Exception as e:
-        logger.error(f"Error generating embedding for query '{user_query_text}': {e}")
+        logger.error(f"Error generating embedding for query '{user_query_text}': {e}", exc_info=True)
         # Log this error and return a generic response
         await log_user_interaction(
             user_id=user_id,
@@ -138,6 +150,7 @@ async def chat_with_bot(query: ChatQuery):
     status = "unanswered" # Default to unanswered for now
 
     # --- Log User Interaction ---
+    # Note: log_user_interaction is an async function, so it needs 'await'
     await log_user_interaction(
         user_id=user_id,
         query_text=user_query_text,
@@ -168,6 +181,7 @@ async def log_user_interaction(
     """
     if not db:
         logger.error("Database not connected for logging.")
+        # In a production app, you might raise an HTTPException here
         return {"message": "Logging failed: DB not connected."}
 
     log_entry = LogEntry(
@@ -181,11 +195,12 @@ async def log_user_interaction(
     )
 
     try:
-        result = await db[LOGS_COLLECTION].insert_one(log_entry.dict())
+        # Using .dict() to convert Pydantic model to a dictionary for PyMongo
+        result = db[LOGS_COLLECTION].insert_one(log_entry.dict())
         logger.info(f"Logged interaction with ID: {result.inserted_id}")
         return {"message": "Log entry created successfully", "id": str(result.inserted_id)}
     except Exception as e:
-        logger.error(f"Failed to log interaction: {e}")
+        logger.error(f"Failed to log interaction: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to log interaction.")
 
 # --- Admin Dashboard Endpoints (Basic - Week 3/4) ---
@@ -197,14 +212,16 @@ async def get_unanswered_queries():
     if not db:
         raise HTTPException(status_code=503, detail="Database not connected.")
     try:
-        # In a real app, you'd add filtering, pagination, and authentication here
-        queries = await db[LOGS_COLLECTION].find({"status": "unanswered"}).to_list(100) # Limit to 100 for example
+        # Using list() to convert the PyMongo cursor to a list synchronously
+        # For larger datasets, consider pagination.
+        queries = list(db[LOGS_COLLECTION].find({"status": "unanswered"}))
         # Convert ObjectId to string for JSON serialization
         for q in queries:
-            q["_id"] = str(q["_id"])
+            if "_id" in q: # Check if _id exists before converting
+                q["_id"] = str(q["_id"])
         return queries
     except Exception as e:
-        logger.error(f"Failed to retrieve unanswered queries: {e}")
+        logger.error(f"Failed to retrieve unanswered queries: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve data.")
 
 @app.get("/admin/logs")
@@ -213,12 +230,13 @@ async def get_all_logs():
     if not db:
         raise HTTPException(status_code=503, detail="Database not connected.")
     try:
-        # In a real app, you'd add filtering, pagination, and authentication here
-        logs = await db[LOGS_COLLECTION].find({}).to_list(100) # Limit to 100 for example
+        # Using list() to convert the PyMongo cursor to a list synchronously
+        # For larger datasets, consider pagination.
+        logs = list(db[LOGS_COLLECTION].find({}))
         for l in logs:
-            l["_id"] = str(l["_id"])
+            if "_id" in l: # Check if _id exists before converting
+                l["_id"] = str(l["_id"])
         return logs
     except Exception as e:
-        logger.error(f"Failed to retrieve logs: {e}")
+        logger.error(f"Failed to retrieve logs: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve data.")
-    
