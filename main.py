@@ -38,8 +38,7 @@ db = None
 # --- NLP Model ---
 nlp_model: SentenceTransformer = None
 
-# --- FastAPI Event Handlers ---
-
+# --- Startup and Shutdown Events ---
 @app.on_event("startup")
 async def startup_db_client():
     """
@@ -48,17 +47,10 @@ async def startup_db_client():
     global client, db, nlp_model
     try:
         logger.info("Connecting to MongoDB...")
-        # Use a timeout to prevent indefinite blocking if MongoDB is unreachable
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         client.admin.command('ping') # Test connection
         db = client[DB_NAME]
         logger.info(f"Connected to MongoDB: {DB_NAME}")
-
-        # Ensure collections exist (MongoDB creates them on first insert if not present)
-        # You might want to add indexing here for performance on `embedding` field later
-        # For vector search, you'd typically use a vector search index feature of MongoDB Atlas
-        # or perform brute-force search in memory for small datasets.
-
         logger.info(f"Loading NLP model: {NLP_MODEL_NAME}...")
         nlp_model = SentenceTransformer(NLP_MODEL_NAME)
         logger.info("NLP model loaded successfully.")
@@ -80,18 +72,16 @@ async def shutdown_db_client():
         client.close()
         logger.info("MongoDB connection closed.")
 
-# --- Pydantic Models for Request/Response ---
-
 class ChatQuery(BaseModel):
     user_id: str
     query_text: str
-    language: str = "en" # Default to English, can be 'hi', 'hinglish'
+    language: str = "en" # Default to English,'hi'-Hindii obv , 'hinglish'
 
 class ChatResponse(BaseModel):
     bot_response: str
-    status: str # e.g., "answered", "unanswered"
+    status: str 
     language: str
-    query_id: str = None # Optional, if you generate a query ID
+    query_id: str = None 
 
 class LogEntry(BaseModel):
     timestamp: datetime
@@ -102,7 +92,6 @@ class LogEntry(BaseModel):
     language: str
     similarity_score: float = None
 
-# --- API Endpoints ---
 
 @app.get("/")
 async def read_root():
@@ -131,7 +120,7 @@ async def chat_with_bot(query: ChatQuery):
         logger.info(f"Generated embedding for query: {user_query_text[:30]}...")
     except Exception as e:
         logger.error(f"Error generating embedding for query '{user_query_text}': {e}", exc_info=True)
-        # Log this error and return a generic response
+        #a Classic generic response
         await log_user_interaction(
             user_id=user_id,
             query_text=user_query_text,
@@ -141,23 +130,18 @@ async def chat_with_bot(query: ChatQuery):
         )
         raise HTTPException(status_code=500, detail="Error processing your query.")
 
-    # --- Placeholder for FAQ Matching Logic (Week 3 Task) ---
-    # In Week 3, you will fetch FAQs from MongoDB, calculate similarity
-    # between user_embedding and FAQ embeddings, and find the best match.
-    # For now, we return a dummy response.
+    # Week 3
 
     bot_response_text = "I'm still learning! For now, I can only acknowledge your query."
     status = "unanswered" # Default to unanswered for now
 
-    # --- Log User Interaction ---
-    # Note: log_user_interaction is an async function, so it needs 'await'
     await log_user_interaction(
         user_id=user_id,
         query_text=user_query_text,
         bot_response_text=bot_response_text,
         status=status,
         language=language,
-        # similarity_score=highest_similarity_score # Add this in Week 3
+        
     )
 
     return ChatResponse(
@@ -173,7 +157,7 @@ async def log_user_interaction(
     bot_response_text: str,
     status: str, # "answered", "unanswered", "error"
     language: str,
-    similarity_score: float = None # Optional, for NLP-based logs
+    similarity_score: float = None 
 ):
     """
     Logs user queries and bot responses to the database.
@@ -181,7 +165,6 @@ async def log_user_interaction(
     """
     if not db:
         logger.error("Database not connected for logging.")
-        # In a production app, you might raise an HTTPException here
         return {"message": "Logging failed: DB not connected."}
 
     log_entry = LogEntry(
@@ -195,7 +178,7 @@ async def log_user_interaction(
     )
 
     try:
-        # Using .dict() to convert Pydantic model to a dictionary for PyMongo
+        
         result = db[LOGS_COLLECTION].insert_one(log_entry.dict())
         logger.info(f"Logged interaction with ID: {result.inserted_id}")
         return {"message": "Log entry created successfully", "id": str(result.inserted_id)}
@@ -203,8 +186,7 @@ async def log_user_interaction(
         logger.error(f"Failed to log interaction: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to log interaction.")
 
-# --- Admin Dashboard Endpoints (Basic - Week 3/4) ---
-# These will be expanded with authentication and proper data retrieval later
+# Admin Dashboard Endpoints (Basic - Week 3?)
 
 @app.get("/admin/unanswered_queries")
 async def get_unanswered_queries():
@@ -212,12 +194,9 @@ async def get_unanswered_queries():
     if not db:
         raise HTTPException(status_code=503, detail="Database not connected.")
     try:
-        # Using list() to convert the PyMongo cursor to a list synchronously
-        # For larger datasets, consider pagination.
         queries = list(db[LOGS_COLLECTION].find({"status": "unanswered"}))
-        # Convert ObjectId to string for JSON serialization
         for q in queries:
-            if "_id" in q: # Check if _id exists before converting
+            if "_id" in q: 
                 q["_id"] = str(q["_id"])
         return queries
     except Exception as e:
@@ -230,11 +209,10 @@ async def get_all_logs():
     if not db:
         raise HTTPException(status_code=503, detail="Database not connected.")
     try:
-        # Using list() to convert the PyMongo cursor to a list synchronously
-        # For larger datasets, consider pagination.
+        
         logs = list(db[LOGS_COLLECTION].find({}))
         for l in logs:
-            if "_id" in l: # Check if _id exists before converting
+            if "_id" in l: 
                 l["_id"] = str(l["_id"])
         return logs
     except Exception as e:
