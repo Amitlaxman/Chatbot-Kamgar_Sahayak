@@ -13,8 +13,6 @@ class WelcomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const SizedBox(height: 50),
-
-            // Logo + Title
             Center(
               child: Column(
                 children: [
@@ -44,8 +42,6 @@ class WelcomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Get Started Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(
@@ -94,7 +90,6 @@ class WelcomeScreen extends StatelessWidget {
               ),
             ),
 
-            // Hindi text + icon at bottom
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
