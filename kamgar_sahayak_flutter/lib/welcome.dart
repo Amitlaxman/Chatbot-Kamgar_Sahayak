@@ -94,16 +94,21 @@ class WelcomeScreen extends StatelessWidget {
               ),
             ),
 
-            // Language icon (optional)
+            // Hindi text + icon at bottom
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    'assets/hindi_icon.png', // Icon for language switch
-                    height: 25,
+                children: const [
+                  Text(
+                    'हिंदी',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
+                  SizedBox(width: 4),
+                  Icon(Icons.language, color: Colors.white, size: 20),
                 ],
               ),
             ),
