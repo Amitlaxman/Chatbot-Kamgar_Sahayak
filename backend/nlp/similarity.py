@@ -6,11 +6,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Function to get the NLP model (will be loaded via model_loader.py)
-from backend.nlp.model_loader import get_nlp_model
+from backend.nlp.model_loader import get_model
 
 def get_embedding(text: str) -> List[float]:
     try:
-        model = get_nlp_model()
+        model = get_model()
         # Ensure the model is loaded before encoding
         if model is None:
             raise RuntimeError("NLP model is not loaded. Cannot generate embeddings.")
