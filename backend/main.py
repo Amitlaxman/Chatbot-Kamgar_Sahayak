@@ -16,7 +16,7 @@ from backend.nlp.model_loader import load_nlp_model
 
 # Load environment variables
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 
 # Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
