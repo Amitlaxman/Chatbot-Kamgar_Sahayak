@@ -1,4 +1,4 @@
-
+from backend.routes import chat_routes, admin_routes
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
@@ -12,13 +12,15 @@ from passlib.context import CryptContext
 
 from backend.db.mongo_utils import connect_to_mongo, close_mongo_connection, get_admin_user
 from backend.nlp.model_loader import load_nlp_model
-from backend.routes import chat_routes, admin_routes
+
 
 # Load environment variables
-load_dotenv()
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+print("MONGO_URI:", MONGO_URI)  # Debug print to verify the value
 DB_NAME = os.getenv("DB_NAME", "chatbot_db")
 NLP_MODEL_NAME = os.getenv("NLP_MODEL_NAME", "paraphrase-multilingual-MiniLM-L12-v2")
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-please-change-this-in-production")
@@ -120,6 +122,7 @@ import numpy as np # For efficient cosine similarity, dependency of sentence_tra
 # Make sure you have a .env file in the 'backend' directory
 # with MONGO_URI, JWT_SECRET_KEY, etc.
 from dotenv import load_dotenv
+from backend.routes import admin_routes as admin_routes, chat_routes
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")

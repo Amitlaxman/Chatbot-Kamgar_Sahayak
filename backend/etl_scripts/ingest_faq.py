@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from typing import List, Dict, Any
 
 # --- Configuration ---
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '..', 'backend', '.env'))
 
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME", "chatbot_db")
