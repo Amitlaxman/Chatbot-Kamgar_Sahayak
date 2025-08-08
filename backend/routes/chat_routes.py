@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
-from backend.models.chat_models import ChatQuery, ChatResponse, LogEntry
+from backend.models.chat_model import ChatQuery, ChatResponse, LogEntry
 from backend.db.mongo_utils import get_mongo_db, insert_log_entry, get_all_faqs
 from backend.nlp.similarity import get_embedding, cosine_similarity
 import logging
