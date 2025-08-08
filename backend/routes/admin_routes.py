@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 import logging
 import os
 from backend.db.mongo_utils import get_mongo_db, get_unanswered_logs, get_all_logs_entries, get_admin_user, create_admin_user
-from backend.models.chat_models import AdminLogin, AdminUser # Import AdminUser model
+from backend.models.chat_model import AdminLogin
 from passlib.context import CryptContext # For password hashing
 from datetime import datetime, timedelta
 import jwt # PyJWT for token handling
@@ -21,7 +21,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="admin_api/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admin_api/token")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
