@@ -1,17 +1,97 @@
+import csv
+import os
+import logging
 from fastapi import APIRouter, HTTPException, status
 from backend.models.chat_model import ChatQuery, ChatResponse, LogEntry
 from backend.db.mongo_utils import get_mongo_db, insert_log_entry, get_all_faqs
 from backend.nlp.similarity import get_embedding, cosine_similarity
-import logging
 from datetime import datetime
 from typing import Dict, Any
+
+# --- Logger setup ---
+logger = logging.getLogger(__name__)
+
+# --- Load keywords and synonyms from keywords.csv at startup ---
+KEYWORDS = set()
+KEYWORDS_CSV_PATH = os.path.join(os.path.dirname(__file__), '../../data/keywords.csv')
+try:
+    with open(KEYWORDS_CSV_PATH, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            for col in row:
+                if row[col]:
+                    KEYWORDS.add(row[col].strip().lower())
+    logger.info(f"Loaded {len(KEYWORDS)} keywords/synonyms from keywords.csv.")
+except Exception as e:
+    logger.error(f"Failed to load keywords from {KEYWORDS_CSV_PATH}: {e}")
+
+# --- Function to extend user query with keywords/synonyms ---
+def extend_query_with_keywords(query_text):
+    extended = query_text
+    query_lower = query_text.lower()
+    for kw in KEYWORDS:
+        if kw in query_lower and kw not in extended:
+            extended += " " + kw
+    return extended
+
+# --- Load keywords and synonyms from keywords.csv at startup ---
+KEYWORDS = set()
+KEYWORDS_CSV_PATH = os.path.join(os.path.dirname(__file__), '../../data/keywords.csv')
+try:
+    with open(KEYWORDS_CSV_PATH, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            for col in row:
+                if row[col]:
+                    KEYWORDS.add(row[col].strip().lower())
+    logger.info(f"Loaded {len(KEYWORDS)} keywords/synonyms from keywords.csv.")
+except Exception as e:
+    logger.error(f"Failed to load keywords from {KEYWORDS_CSV_PATH}: {e}")
+
+# --- Function to extend user query with keywords/synonyms ---
+def extend_query_with_keywords(query_text):
+    extended = query_text
+    query_lower = query_text.lower()
+    for kw in KEYWORDS:
+        if kw in query_lower and kw not in extended:
+            extended += " " + kw
+    return extended
+    for kw in KEYWORDS:
+        if kw in query_text.lower():
+            extended += " " + kw
+    return extended
+
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# --- Load keywords and synonyms from keywords.csv at startup ---
+KEYWORDS = set()
+KEYWORDS_CSV_PATH = os.path.join(os.path.dirname(__file__), '../../data/keywords.csv')
+try:
+    with open(KEYWORDS_CSV_PATH, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            for col in row:
+                if row[col]:
+                    KEYWORDS.add(row[col].strip().lower())
+    logger.info(f"Loaded {len(KEYWORDS)} keywords/synonyms from keywords.csv.")
+except Exception as e:
+    logger.error(f"Failed to load keywords from {KEYWORDS_CSV_PATH}: {e}")
+
+# --- Function to extend user query with keywords/synonyms ---
+def extend_query_with_keywords(query_text):
+    extended = query_text
+    query_lower = query_text.lower()
+    for kw in KEYWORDS:
+        if kw in query_lower and kw not in extended:
+            extended += " " + kw
+    return extended
+
 # --- Configuration for Chatbot Logic ---
 # You can adjust this confidence threshold based on testing
-CONFIDENCE_THRESHOLD = 0.75 # If similarity is below this, query is "unanswered"
+CONFIDENCE_THRESHOLD = 0.6 # Lowered threshold for better matching
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_bot(query: ChatQuery):
@@ -20,7 +100,6 @@ async def chat_with_bot(query: ChatQuery):
     logs the interaction, and returns the bot's response.
     """
     db = get_mongo_db() # Ensure DB connection is active
-    
     user_query_text = query.query_text
     user_id = query.user_id
     language = query.language
@@ -30,10 +109,12 @@ async def chat_with_bot(query: ChatQuery):
     bot_response_text = ""
     status_text = "unanswered"
     similarity_score = None
-    
+
     try:
-        # 1. Generate Embedding for User Query
-        user_embedding = get_embedding(user_query_text)
+        # 1. Extend user query with keywords/synonyms for better matching
+        extended_query_text = extend_query_with_keywords(user_query_text)
+        # 2. Generate Embedding for Extended User Query
+        user_embedding = get_embedding(extended_query_text)
 
         # 2. Retrieve all FAQs with their embeddings
         all_faqs = await get_all_faqs()
