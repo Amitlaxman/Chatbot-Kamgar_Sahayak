@@ -1,5 +1,3 @@
-
-
 import pandas as pd
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
@@ -10,7 +8,6 @@ from dotenv import load_dotenv
 from typing import List, Dict, Any
 
 # --- Configuration ---
-# Load .env from backend folder (assuming this script is run from project root or backend folder)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 MONGO_URI = os.getenv("MONGO_URI")
@@ -47,8 +44,8 @@ def run_etl(faq_data_path: str):
 
         # --- 3. Extract Data ---
         logger.info(f"Extracting data from {faq_data_path}...")
-        # Read the CSV, assuming 'ID', 'category', 'language', 'Question', 'Answer' columns
-        df = pd.read_csv(faq_data_path)
+        # Read the CSV, assuming 'ID', 'category', 'language', 'Question', 'Answer', 'keywords_en', 'keywords_hi' columns
+        df = pd.read_csv(faq_data_path, keep_default_na=False) # Keep_default_na=False prevents empty strings from being read as NaN
         logger.info(f"Extracted {len(df)} rows from CSV.")
 
         # --- 4. Transform Data (Group, Generate Embeddings & Clean) ---
@@ -59,49 +56,43 @@ def run_etl(faq_data_path: str):
         for faq_id, group in grouped_faqs:
             faq_doc: Dict[str, Any] = {
                 "question_id": str(faq_id),
-                "keywords_en": [], # Placeholder, to be populated from CSV if columns exist
-                "keywords_hi": [], # Placeholder, to be populated from CSV if columns exist
+                "keywords_en": [],
+                "keywords_hi": [],
                 "answer_en": "",
                 "answer_hi": "",
                 "category": group['category'].iloc[0] if not group['category'].empty else 'General',
                 "embedding": []
             }
             
-            combined_question_text_for_embedding = []
+            combined_text_for_embedding = []
 
-            for index, row in group.iterrows():
+            for _, row in group.iterrows():
                 lang = str(row['language']).lower()
-                question_text = str(row['Question']).strip() if pd.notna(row['Question']) else ""
-                answer_text = str(row['Answer']).strip() if pd.notna(row['Answer']) else ""
+                question_text = str(row['Question']).strip()
+                answer_text = str(row['Answer']).strip()
+                
+                # Combine question and answer for a more robust embedding
+                text_to_embed_from_row = question_text + " " + answer_text
+                if text_to_embed_from_row.strip():
+                    combined_text_for_embedding.append(text_to_embed_from_row.strip())
 
                 if lang == 'en':
                     faq_doc['answer_en'] = answer_text
-                    combined_question_text_for_embedding.append(question_text)
-                    # Attempt to get keywords_en if column exists in the row
-                    if 'keywords_en' in row and pd.notna(row['keywords_en']):
-                        faq_doc['keywords_en'] = [k.strip() for k in str(row['keywords_en']).split(',') if k.strip()]
+                    if 'keywords_en' in row and row['keywords_en']:
+                        faq_doc['keywords_en'] = [k.strip() for k in str(row['keywords_en']).split(',')]
                 elif lang == 'hi':
                     faq_doc['answer_hi'] = answer_text
-                    combined_question_text_for_embedding.append(question_text)
-                    # Attempt to get keywords_hi if column exists in the row
-                    if 'keywords_hi' in row and pd.notna(row['keywords_hi']):
-                        faq_doc['keywords_hi'] = [k.strip() for k in str(row['keywords_hi']).split(',') if k.strip()]
+                    if 'keywords_hi' in row and row['keywords_hi']:
+                        faq_doc['keywords_hi'] = [k.strip() for k in str(row['keywords_hi']).split(',')]
                 elif lang == 'hinglish':
-                    # For Hinglish, we might use its question for embedding or its answer for answer_hi
-                    # For now, let's add its question to the combined embedding text
-                    combined_question_text_for_embedding.append(question_text)
-                    # If answer_hi is empty, use Hinglish answer for it
-                    if not faq_doc['answer_hi'] and pd.notna(row['Answer']):
+                    if not faq_doc['answer_hi']:
                          faq_doc['answer_hi'] = answer_text
-                    # If keywords_hi is empty, try to get from hinglish row
-                    if not faq_doc['keywords_hi'] and 'keywords_hi' in row and pd.notna(row['keywords_hi']):
-                        faq_doc['keywords_hi'] = [k.strip() for k in str(row['keywords_hi']).split(',') if k.strip()]
-                
-                # If keywords_en/hi columns are not in CSV, they remain empty lists
-
-            text_for_embedding = " ".join(combined_question_text_for_embedding).strip()
+                    if not faq_doc['keywords_hi'] and 'keywords_hi' in row and row['keywords_hi']:
+                        faq_doc['keywords_hi'] = [k.strip() for k in str(row['keywords_hi']).split(',')]
+            
+            text_for_embedding = " ".join(combined_text_for_embedding).strip()
             if not text_for_embedding:
-                logger.warning(f"Skipping FAQ ID {faq_id} due to missing question text for embedding across all languages.")
+                logger.warning(f"Skipping FAQ ID {faq_id} due to missing text for embedding across all languages.")
                 continue
 
             # Generate embedding
@@ -112,7 +103,6 @@ def run_etl(faq_data_path: str):
 
         # --- 5. Load Data ---
         if processed_faqs:
-            # Clear existing FAQs before loading new ones (use with caution in production)
             faqs_collection.delete_many({})
             faqs_collection.insert_many(processed_faqs)
             logger.info(f"Successfully loaded {len(processed_faqs)} FAQs into MongoDB.")
@@ -131,18 +121,10 @@ def run_etl(faq_data_path: str):
             logger.info("MongoDB connection closed for ETL.")
 
 if __name__ == "__main__":
-    # --- Example Usage ---
-    # IMPORTANT: Place your faqs_raw.csv file in the 'data/' directory
-    # The path below assumes you run this script from the 'backend/' directory
-    # or from the project root if you adjust the path accordingly.
-    
-    # Path from backend/etl_scripts/ to data/faqs_raw.csv
     faq_data_file = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'faqs_raw.csv')
     
-    # Ensure the data directory exists and faqs_raw.csv is there
     if not os.path.exists(faq_data_file):
         logger.error(f"FAQ data file not found: {faq_data_file}")
-        logger.info("Please ensure 'faqs_raw.csv' is in the 'data/' directory at the project root.")
         logger.info("Creating a dummy 'faqs_raw.csv' for demonstration. Please populate it with your actual data.")
         
         # Creating a dummy CSV that matches the *new* expected input format
