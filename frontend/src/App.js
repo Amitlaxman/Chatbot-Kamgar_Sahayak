@@ -129,9 +129,9 @@ const App = () => {
         'hinglish': 'Kuch error ho gaya. Pls baad mein try karein.'
       },
       'initial_greeting': {
-        'en': `Hello! I'm Shramik Saathi, your AI assistant for labor information in Madhya Pradesh, India. I can help you understand your rights regarding wage laws, working hours, and more. How can I help you?`,
-        'hi': `नमस्ते! मैं श्रमिक साथी हूँ, मध्य प्रदेश, भारत में श्रम जानकारी के लिए आपका AI सहायक। मैं आपको मजदूरी कानूनों, काम के घंटों और आपके अधिकारों के बारे में जानकारी समझने में मदद कर सकता हूँ। मैं आपकी कैसे मदद कर सकता हूँ?`,
-        'hinglish': `Hello! Main Shramik Saathi hoon, aapka AI assistant Madhya Pradesh, India mein labour information ke liye. Main aapki madad kar sakta hoon wage laws, working hours aur aapke rights samajhne mein. Main aapki kaise help kar sakta hoon?`
+        'en': `Hello! I'm Kaamgar Sahayak, your AI assistant for labor information in Madhya Pradesh, India. I can help you understand your rights regarding wage laws, working hours, and more. How can I help you?`,
+        'hi': `नमस्ते! मैं कामगार सहायक हूँ, मध्य प्रदेश, भारत में श्रम जानकारी के लिए आपका AI सहायक। मैं आपको मजदूरी कानूनों, काम के घंटों और आपके अधिकारों के बारे में जानकारी समझने में मदद कर सकता हूँ। मैं आपकी कैसे मदद कर सकता हूँ?`,
+        'hinglish': `Hello! Main Kaamgar Sahayak hoon, aapka AI assistant Madhya Pradesh, India mein labour information ke liye. Main aapki madad kar sakta hoon wage laws, working hours aur aapke rights samajhne mein. Main aapki kaise help kar sakta hoon?`
       }
     };
     return messages[key]?.[lang] || messages[key]?.['en'];
@@ -264,8 +264,8 @@ const App = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-inter antialiased">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 shadow-lg rounded-b-xl">
-        <h1 className="text-3xl font-bold text-center">श्रमिक साथी (Shramik Saathi)</h1>
+      <header className="bg-blue-700 text-white p-4 shadow rounded-b-lg">
+        <h1 className="text-3xl font-bold text-center">Kaamgar Sahayak</h1>
         <p className="text-center text-sm mt-1 opacity-90">Your AI Assistant for Labour Information in MP, India</p>
       </header>
 
@@ -319,7 +319,6 @@ const App = () => {
           >
             <option value="en">English</option>
             <option value="hi">हिंदी (Hindi)</option>
-            <option value="hinglish">Hinglish</option>
           </select>
         </div>
 
@@ -327,7 +326,7 @@ const App = () => {
           <input
             type="text"
             className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
-            placeholder={language === 'en' ? "Type your message..." : (language === 'hi' ? "अपना संदेश टाइप करें..." : "Apna sandesh type karein...")}
+            placeholder={language === 'en' ? "Type your message..." : "अपना संदेश टाइप करें..."}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -388,14 +387,11 @@ const App = () => {
         </div>
       </div>
 
-      {/* Tailwind CSS Script */}
-      <script src="https://cdn.tailwindcss.com"></script>
-      {/* Inter Font */}
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <style>
         {`
           body {
             font-family: 'Inter', sans-serif;
+            background: #f8fafc;
           }
           .custom-scrollbar::-webkit-scrollbar {
             width: 8px;
@@ -411,7 +407,6 @@ const App = () => {
           .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #555;
           }
-          /* Basic bounce animation for loading dots */
           @keyframes bounce {
             0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
             50% { transform: translateY(0); animation-timing-function: cubic-bezier(0,0,0.2,1); }
