@@ -57,7 +57,27 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
     except jwt.PyJWTError:
         raise credentials_exception
 
-# --- Admin Auth Endpoints ---
+
+# --- Admin Dashboard Endpoints ---
+@router.get("/unanswered_logs", response_model=List[Dict[str, Any]])
+async def get_unanswered_logs_api(current_user: dict = Depends(get_current_admin_user)):
+    """Get all unanswered queries/logs."""
+    try:
+        logs = await get_unanswered_logs()
+        return logs
+    except Exception as e:
+        logger.error(f"Error fetching unanswered logs: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch unanswered logs")
+
+@router.get("/all_logs", response_model=List[Dict[str, Any]])
+async def get_all_logs_api(current_user: dict = Depends(get_current_admin_user)):
+    """Get all query logs."""
+    try:
+        logs = await get_all_logs_entries()
+        return logs
+    except Exception as e:
+        logger.error(f"Error fetching all logs: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch all logs")
 
 @router.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
