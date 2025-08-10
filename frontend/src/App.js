@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique user IDs
+import AdminDashboard from './AdminDashboard';
+import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 
 // Main App Component - This is your primary web framework for the chatbot
 const App = () => {
@@ -129,9 +131,9 @@ const App = () => {
         'hinglish': 'Kuch error ho gaya. Pls baad mein try karein.'
       },
       'initial_greeting': {
-        'en': `Hello! I'm Shramik Saathi, your AI assistant for labor information in Madhya Pradesh, India. I can help you understand your rights regarding wage laws, working hours, and more. How can I help you?`,
-        'hi': `नमस्ते! मैं श्रमिक साथी हूँ, मध्य प्रदेश, भारत में श्रम जानकारी के लिए आपका AI सहायक। मैं आपको मजदूरी कानूनों, काम के घंटों और आपके अधिकारों के बारे में जानकारी समझने में मदद कर सकता हूँ। मैं आपकी कैसे मदद कर सकता हूँ?`,
-        'hinglish': `Hello! Main Shramik Saathi hoon, aapka AI assistant Madhya Pradesh, India mein labour information ke liye. Main aapki madad kar sakta hoon wage laws, working hours aur aapke rights samajhne mein. Main aapki kaise help kar sakta hoon?`
+        'en': `Hello! I'm Kaamgar Sahayak, your AI assistant for labor information in Madhya Pradesh, India. I can help you understand your rights regarding wage laws, working hours, and more. How can I help you?`,
+        'hi': `नमस्ते! मैं कामगार सहायक हूँ, मध्य प्रदेश, भारत में श्रम जानकारी के लिए आपका AI सहायक। मैं आपको मजदूरी कानूनों, काम के घंटों और आपके अधिकारों के बारे में जानकारी समझने में मदद कर सकता हूँ। मैं आपकी कैसे मदद कर सकता हूँ?`,
+        'hinglish': `Hello! Main Kaamgar Sahayak hoon, aapka AI assistant Madhya Pradesh, India mein labour information ke liye. Main aapki madad kar sakta hoon wage laws, working hours aur aapke rights samajhne mein. Main aapki kaise help kar sakta hoon?`
       }
     };
     return messages[key]?.[lang] || messages[key]?.['en'];
@@ -262,167 +264,171 @@ const App = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 font-inter antialiased">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 shadow-lg rounded-b-xl">
-        <h1 className="text-3xl font-bold text-center">श्रमिक साथी (Shramik Saathi)</h1>
-        <p className="text-center text-sm mt-1 opacity-90">Your AI Assistant for Labour Information in MP, India</p>
-      </header>
-
-      {/* Chat Window */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`flex ${msg.sender === 'user' ? 'justify-end' : (msg.sender === 'bot' ? 'justify-start' : 'justify-center')}`}
-          >
-            <div
-              className={`max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg shadow-md ${
-                msg.sender === 'user'
-                  ? 'bg-blue-500 text-white rounded-br-none'
-                  : msg.sender === 'bot'
-                  ? 'bg-white text-gray-800 rounded-bl-none'
-                  : 'bg-gray-300 text-gray-700 text-center text-xs rounded-full px-4 py-1' // System messages
-              }`}
-            >
-              <p className="text-sm">{msg.text}</p>
-              {msg.sender !== 'system' && (
-                <span className="text-xs opacity-75 mt-1 block">
-                  {msg.timestamp.toLocaleTimeString()}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-white text-gray-800 p-3 rounded-lg shadow-md rounded-bl-none">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+    <Router>
+      <div className="flex flex-col h-screen bg-gray-100 font-inter antialiased">
+        <nav className="bg-gray-200 p-2 flex justify-end">
+          <Link to="/" className="mr-4 text-blue-700 font-semibold">Chatbot</Link>
+          <Link to="/admin" className="text-blue-700 font-semibold">Admin Dashboard</Link>
+        </nav>
+        <Routes>
+          <Route path="/" element={
+            <>
+              {/* Header */}
+              <header className="bg-blue-700 text-white p-4 shadow rounded-b-lg">
+                <h1 className="text-3xl font-bold text-center">Kaamgar Sahayak</h1>
+                <p className="text-center text-sm mt-1 opacity-90">Your AI Assistant for Labour Information in MP, India</p>
+              </header>
+              {/* Chat Window */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                {messages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${msg.sender === 'user' ? 'justify-end' : (msg.sender === 'bot' ? 'justify-start' : 'justify-center')}`}
+                  >
+                    <div
+                      className={`max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg shadow-md ${
+                        msg.sender === 'user'
+                          ? 'bg-blue-500 text-white rounded-br-none'
+                          : msg.sender === 'bot'
+                          ? 'bg-white text-gray-800 rounded-bl-none'
+                          : 'bg-gray-300 text-gray-700 text-center text-xs rounded-full px-4 py-1' // System messages
+                      }`}
+                    >
+                      <p className="text-sm">{msg.text}</p>
+                      {msg.sender !== 'system' && (
+                        <span className="text-xs opacity-75 mt-1 block">
+                          {msg.timestamp.toLocaleTimeString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-white text-gray-800 p-3 rounded-lg shadow-md rounded-bl-none">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+              {/* Input Area */}
+              <div className="bg-white p-4 border-t border-gray-200 shadow-lg rounded-t-xl">
+                {/* Language Selector */}
+                <div className="mb-3 flex justify-center">
+                  <select
+                    value={language}
+                    onChange={handleLanguageChange}
+                    className="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  >
+                    <option value="en">English</option>
+                    <option value="hi">हिंदी (Hindi)</option>
+                  </select>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="text"
+                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+                    placeholder={language === 'en' ? "Type your message..." : "अपना संदेश टाइप करें..."}
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    disabled={isLoading}
+                  />
+                  <button
+                    onClick={toggleListening}
+                    className={`p-3 rounded-full shadow-md transition-all duration-200 ease-in-out
+                      ${isListening ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}
+                      text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                      ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={isListening ? "Stop Listening" : "Start Voice Input"}
+                    disabled={isLoading}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 11a7 7 0 01-14 0v-1a7 7 0 0114 0v1z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 20v-4m0 0H8m4 0h4m-4-8V4m0 0h4m-4 0H8"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleSendMessage()}
+                    className={`p-3 rounded-full bg-green-500 text-white shadow-md hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
+                      ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title="Send Message"
+                    disabled={isLoading}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14 5l7 7m0 0l-7 7m7-7H3"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <style>
+                {`
+                  body {
+                    font-family: 'Inter', sans-serif;
+                    background: #f8fafc;
+                  }
+                  .custom-scrollbar::-webkit-scrollbar {
+                    width: 8px;
+                  }
+                  .custom-scrollbar::-webkit-scrollbar-track {
+                    background: #f1f1f1;
+                    border-radius: 10px;
+                  }
+                  .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #888;
+                    border-radius: 10px;
+                  }
+                  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: #555;
+                  }
+                  @keyframes bounce {
+                    0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
+                    50% { transform: translateY(0); animation-timing-function: cubic-bezier(0,0,0.2,1); }
+                  }
+                  .animate-bounce {
+                    animation: bounce 1s infinite;
+                  }
+                `}
+              </style>
+            </>
+          } />
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Routes>
       </div>
-
-      {/* Input Area */}
-      <div className="bg-white p-4 border-t border-gray-200 shadow-lg rounded-t-xl">
-        {/* Language Selector */}
-        <div className="mb-3 flex justify-center">
-          <select
-            value={language}
-            onChange={handleLanguageChange}
-            className="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-          >
-            <option value="en">English</option>
-            <option value="hi">हिंदी (Hindi)</option>
-            <option value="hinglish">Hinglish</option>
-          </select>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <input
-            type="text"
-            className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
-            placeholder={language === 'en' ? "Type your message..." : (language === 'hi' ? "अपना संदेश टाइप करें..." : "Apna sandesh type karein...")}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            disabled={isLoading}
-          />
-          <button
-            onClick={toggleListening}
-            className={`p-3 rounded-full shadow-md transition-all duration-200 ease-in-out
-              ${isListening ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}
-              text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-              ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={isListening ? "Stop Listening" : "Start Voice Input"}
-            disabled={isLoading}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 11a7 7 0 01-14 0v-1a7 7 0 0114 0v1z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 20v-4m0 0H8m4 0h4m-4-8V4m0 0h4m-4 0H8"
-              />
-            </svg>
-          </button>
-          <button
-            onClick={() => handleSendMessage()}
-            className={`p-3 rounded-full bg-green-500 text-white shadow-md hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
-              ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title="Send Message"
-            disabled={isLoading}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M14 5l7 7m0 0l-7 7m7-7H3"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Tailwind CSS Script */}
-      <script src="https://cdn.tailwindcss.com"></script>
-      {/* Inter Font */}
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      <style>
-        {`
-          body {
-            font-family: 'Inter', sans-serif;
-          }
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #555;
-          }
-          /* Basic bounce animation for loading dots */
-          @keyframes bounce {
-            0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
-            50% { transform: translateY(0); animation-timing-function: cubic-bezier(0,0,0.2,1); }
-          }
-          .animate-bounce {
-            animation: bounce 1s infinite;
-          }
-        `}
-      </style>
-    </div>
-  );
-};
+    </Router>
+  )
+}
 
 export default App;

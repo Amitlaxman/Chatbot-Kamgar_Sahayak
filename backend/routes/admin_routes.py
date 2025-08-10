@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 import logging
 import os
 from backend.db.mongo_utils import get_mongo_db, get_unanswered_logs, get_all_logs_entries, get_admin_user, create_admin_user
-from backend.models.chat_models import AdminLogin, AdminUser # Import AdminUser model
+from backend.models.chat_model import AdminLogin
 from passlib.context import CryptContext # For password hashing
 from datetime import datetime, timedelta
 import jwt # PyJWT for token handling
@@ -21,7 +21,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="admin_api/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admin_api/token")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -57,7 +57,27 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
     except jwt.PyJWTError:
         raise credentials_exception
 
-# --- Admin Auth Endpoints ---
+
+# --- Admin Dashboard Endpoints ---
+@router.get("/unanswered_logs", response_model=List[Dict[str, Any]])
+async def get_unanswered_logs_api(current_user: dict = Depends(get_current_admin_user)):
+    """Get all unanswered queries/logs."""
+    try:
+        logs = await get_unanswered_logs()
+        return logs
+    except Exception as e:
+        logger.error(f"Error fetching unanswered logs: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch unanswered logs")
+
+@router.get("/all_logs", response_model=List[Dict[str, Any]])
+async def get_all_logs_api(current_user: dict = Depends(get_current_admin_user)):
+    """Get all query logs."""
+    try:
+        logs = await get_all_logs_entries()
+        return logs
+    except Exception as e:
+        logger.error(f"Error fetching all logs: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch all logs")
 
 @router.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
