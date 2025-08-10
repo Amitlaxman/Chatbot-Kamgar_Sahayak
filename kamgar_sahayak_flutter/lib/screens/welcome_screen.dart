@@ -1,91 +1,61 @@
+// lib/screens/welcome_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../locale_provider.dart';
 import '../l10n/app_localizations.dart';
-import 'main_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
+  const WelcomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
-    final localizations = AppLocalizations.of(context)!;
+    final loc = AppLocalizations.of(context)!;
 
     return Scaffold(
-      backgroundColor: Color(0xFF1A3C5A),
+      backgroundColor: const Color(0xFF1A3C5A),
       body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Spacer(),
-            Image.asset('assets/logo.png', height: 100),
-            SizedBox(height: 20),
-            Text(
-              localizations.appTitle,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              localizations.legalAdvice,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
-            ),
-            SizedBox(height: 20),
-            Text(
-              localizations.welcome,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/main');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/logo.png', height: 120),
+              const SizedBox(height: 24),
+              Text(
+                loc.appTitle,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    localizations.getStarted,
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  SizedBox(width: 10),
-                  Icon(Icons.arrow_forward, color: Colors.white),
-                ],
+              const SizedBox(height: 8),
+              Text(
+                loc.legalAdvice,
+                style: const TextStyle(color: Colors.white70),
               ),
-            ),
-            Spacer(),
-            TextButton(
-              onPressed: () {
-                localeProvider.toggleLocale();
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.language, color: Colors.white),
-                  SizedBox(width: 5),
-                  Text(
-                    localeProvider.locale.languageCode == 'en' ? 'हिन्दी' : 'English',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, '/auth');
+                },
+                child: Text(loc.getStarted),
               ),
-            ),
-            SizedBox(height: 20),
-          ],
+              const SizedBox(height: 20),
+              TextButton.icon(
+                onPressed: () {
+                  localeProvider.toggleLocale();
+                },
+                icon: const Icon(Icons.language, color: Colors.white),
+                label: Text(
+                  localeProvider.locale.languageCode == 'en'
+                      ? 'हिन्दी'
+                      : 'English',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

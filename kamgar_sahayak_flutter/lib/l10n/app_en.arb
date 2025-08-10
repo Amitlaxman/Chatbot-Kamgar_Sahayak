@@ -25,5 +25,23 @@
   "yourPhoneNumber": "Your Phone Number",
   "yourPassword": "Your Password",
   "signOut": "Sign out",
-  "done": "Done"
+  "done": "Done",
+  "signUp": "Sign Up",
+  "logIn": "Log In",
+  "dontHaveAccount": "Don't have an account? Sign Up",
+  "alreadyHaveAccountLogin": "Already have an account? Log In",
+  "signInWithGoogle": "Sign in with Google",
+  "signIn": "Sign In",
+  "signInWithGoogle": "Sign in with Google",
+  "sendOtp": "Send OTP",
+  "verifyOtp": "Verify OTP",
+  "phoneNumber": "Phone Number",
+  "enterOtpPrompt": "Enter OTP",
+  "enterPhoneNumber": "Enter phone number in international format (e.g. +91xxxxxxxxxx).",
+  "googleSignInFailed": "Google sign-in failed or cancelled.",
+  "phoneVerificationFailed": "Phone verification failed",
+  "errorSendingOtp": "Error sending OTP:",
+  "pleaseSendOtpFirst": "Please send OTP first.",
+  "otpVerificationFailed": "OTP verification failed"
+  
 }

@@ -3,6 +3,8 @@ import '../l10n/app_localizations.dart';
 import '../widgets/app_header.dart';
 
 class LegalRightsScreen extends StatelessWidget {
+  const LegalRightsScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;

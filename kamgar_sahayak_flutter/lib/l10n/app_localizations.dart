@@ -250,6 +250,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Done'**
   String get done;
+
+  /// No description provided for @signUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Up'**
+  String get signUp;
+
+  /// No description provided for @logIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Log In'**
+  String get logIn;
+
+  /// No description provided for @dontHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account? Sign Up'**
+  String get dontHaveAccount;
+
+  /// No description provided for @alreadyHaveAccountLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? Log In'**
+  String get alreadyHaveAccountLogin;
+
+  /// No description provided for @signInWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Google'**
+  String get signInWithGoogle;
+
+  /// No description provided for @sendOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Send OTP'**
+  String get sendOtp;
+
+  /// No description provided for @verifyOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify OTP'**
+  String get verifyOtp;
+
+  /// No description provided for @enterOtpPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter OTP'**
+  String get enterOtpPrompt;
+
+  /// No description provided for @enterPhoneNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter phone number in international format (e.g. +91xxxxxxxxxx).'**
+  String get enterPhoneNumber;
+
+  /// No description provided for @googleSignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in failed or cancelled.'**
+  String get googleSignInFailed;
+
+  /// No description provided for @phoneVerificationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone verification failed'**
+  String get phoneVerificationFailed;
+
+  /// No description provided for @errorSendingOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Error sending OTP:'**
+  String get errorSendingOtp;
+
+  /// No description provided for @pleaseSendOtpFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Please send OTP first.'**
+  String get pleaseSendOtpFirst;
+
+  /// No description provided for @otpVerificationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'OTP verification failed'**
+  String get otpVerificationFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "577421801171",
+    "project_id": "kamgar-sahayak",
+    "storage_bucket": "kamgar-sahayak.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:577421801171:android:a9385c61367987b88e8626",
+        "android_client_info": {
+          "package_name": "com.example.kamgar_sahayak"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "577421801171-iviqgbdj00oa3tcq96r1koehjadkbr9n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.kamgar_sahayak",
+            "certificate_hash": "8fa5826357cf62ebf2e912f943c75084cfbb8e4a"
+          }
+        },
+        {
+          "client_id": "577421801171-d45dlsfdndp3kb9up9cbs00epa4r7cdv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCzYSA5BxM_9vAksweZA2VcXzzHjMD4Dxc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "577421801171-d45dlsfdndp3kb9up9cbs00epa4r7cdv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "577421801171-s0jbk605qi0p9b88s7blm754444hnn3d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.kamgarSahayak"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

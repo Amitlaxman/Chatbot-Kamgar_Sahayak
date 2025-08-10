@@ -85,4 +85,46 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get done => 'समाप्त';
+
+  @override
+  String get signUp => 'साइन अप';
+
+  @override
+  String get logIn => 'लॉग इन';
+
+  @override
+  String get dontHaveAccount => 'खाता नहीं है? साइन अप करें';
+
+  @override
+  String get alreadyHaveAccountLogin => 'पहले से खाता है? लॉग इन करें';
+
+  @override
+  String get signInWithGoogle => 'Google से साइन इन करें';
+
+  @override
+  String get sendOtp => 'OTP भेजें';
+
+  @override
+  String get verifyOtp => 'OTP सत्यापित करें';
+
+  @override
+  String get enterOtpPrompt => 'OTP दर्ज करें';
+
+  @override
+  String get enterPhoneNumber => 'अंतरराष्ट्रीय प्रारूप में फ़ोन नंबर दर्ज करें (जैसे +91xxxxxxxxxx)।';
+
+  @override
+  String get googleSignInFailed => 'Google साइन-इन विफल या रद्द कर दिया गया।';
+
+  @override
+  String get phoneVerificationFailed => 'फ़ोन सत्यापन विफल';
+
+  @override
+  String get errorSendingOtp => 'OTP भेजने में त्रुटि:';
+
+  @override
+  String get pleaseSendOtpFirst => 'कृपया पहले OTP भेजें।';
+
+  @override
+  String get otpVerificationFailed => 'OTP सत्यापन विफल';
 }

@@ -85,4 +85,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get done => 'Done';
+
+  @override
+  String get signUp => 'Sign Up';
+
+  @override
+  String get logIn => 'Log In';
+
+  @override
+  String get dontHaveAccount => 'Don\'t have an account? Sign Up';
+
+  @override
+  String get alreadyHaveAccountLogin => 'Already have an account? Log In';
+
+  @override
+  String get signInWithGoogle => 'Sign in with Google';
+
+  @override
+  String get sendOtp => 'Send OTP';
+
+  @override
+  String get verifyOtp => 'Verify OTP';
+
+  @override
+  String get enterOtpPrompt => 'Enter OTP';
+
+  @override
+  String get enterPhoneNumber => 'Enter phone number in international format (e.g. +91xxxxxxxxxx).';
+
+  @override
+  String get googleSignInFailed => 'Google sign-in failed or cancelled.';
+
+  @override
+  String get phoneVerificationFailed => 'Phone verification failed';
+
+  @override
+  String get errorSendingOtp => 'Error sending OTP:';
+
+  @override
+  String get pleaseSendOtpFirst => 'Please send OTP first.';
+
+  @override
+  String get otpVerificationFailed => 'OTP verification failed';
 }

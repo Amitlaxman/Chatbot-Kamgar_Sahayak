@@ -25,5 +25,22 @@
   "yourPhoneNumber": "आपका फोन नंबर",
   "yourPassword": "आपका पासवर्ड",
   "signOut": "साइन आउट करें",
-  "done": "समाप्त"
+  "done": "समाप्त",
+  "signUp": "साइन अप",
+  "logIn": "लॉग इन",
+  "dontHaveAccount": "खाता नहीं है? साइन अप करें",
+  "alreadyHaveAccountLogin": "पहले से खाता है? लॉग इन करें",
+  "signInWithGoogle": "Google से साइन इन करें",
+  "signIn": "दर्ज करें",
+  "signInWithGoogle": "Google से साइन इन करें",
+  "sendOtp": "OTP भेजें",
+  "verifyOtp": "OTP सत्यापित करें",
+  "phoneNumber": "फ़ोन नंबर",
+  "enterOtpPrompt": "OTP दर्ज करें",
+  "enterPhoneNumber": "अंतरराष्ट्रीय प्रारूप में फ़ोन नंबर दर्ज करें (जैसे +91xxxxxxxxxx)।",
+  "googleSignInFailed": "Google साइन-इन विफल या रद्द कर दिया गया।",
+  "phoneVerificationFailed": "फ़ोन सत्यापन विफल",
+  "errorSendingOtp": "OTP भेजने में त्रुटि:",
+  "pleaseSendOtpFirst": "कृपया पहले OTP भेजें।",
+  "otpVerificationFailed": "OTP सत्यापन विफल"
 }

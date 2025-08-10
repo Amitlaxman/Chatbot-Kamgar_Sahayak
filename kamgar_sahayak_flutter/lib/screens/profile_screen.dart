@@ -1,108 +1,45 @@
+// lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
-import '../l10n/app_localizations.dart';
-import '../widgets/app_header.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
+import 'auth_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+    final userProvider = context.watch<UserProvider>();
+    final user = userProvider.user;
 
     return Scaffold(
-      backgroundColor: Color(0xFF1A3C5A),
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppHeader(),
-            SizedBox(height: 20),
-            Container(
-              padding: EdgeInsets.all(16),
-              margin: EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Color(0xFF1A3C5A),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
+      appBar: AppBar(title: const Text('Profile')),
+      body: Center(
+        child: user == null
+            ? const Text('No user found')
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    localizations.viewEditProfile,
-                    style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 20),
-                  Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.white,
-                        child: Icon(Icons.person, size: 50, color: Colors.grey),
-                      ),
-                      Icon(Icons.edit, color: Colors.orange),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: localizations.yourName,
-                      hintStyle: TextStyle(color: Colors.grey),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
-                      suffixIcon: Icon(Icons.edit, color: Colors.orange),
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: localizations.yourPhoneNumber,
-                      hintStyle: TextStyle(color: Colors.grey),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
-                      suffixIcon: Icon(Icons.edit, color: Colors.orange),
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  TextField(
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      hintText: localizations.yourPassword,
-                      hintStyle: TextStyle(color: Colors.grey),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
-                      suffixIcon: Icon(Icons.edit, color: Colors.orange),
-                    ),
-                  ),
-                  SizedBox(height: 20),
+                  if (user.photoURL != null)
+                    CircleAvatar(radius: 48, backgroundImage: NetworkImage(user.photoURL!))
+                  else
+                    const CircleAvatar(radius: 48, child: Icon(Icons.person, size: 48)),
+                  const SizedBox(height: 12),
+                  Text(user.displayName ?? 'No name', style: const TextStyle(fontSize: 20)),
+                  const SizedBox(height: 6),
+                  Text(user.email ?? user.phoneNumber ?? '', style: const TextStyle(fontSize: 16)),
+                  const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.arrow_back, color: Colors.white),
-                        SizedBox(width: 5),
-                        Text(localizations.signOut, style: TextStyle(color: Colors.white)),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: Text(localizations.done, style: TextStyle(color: Colors.white)),
+                    onPressed: () async {
+                      await userProvider.signOutUser();
+                      if (context.mounted) {
+                        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const AuthScreen()), (r) => false);
+                      }
+                    },
+                    child: const Text('Sign out'),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

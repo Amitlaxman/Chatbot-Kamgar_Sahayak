@@ -1,22 +1,31 @@
+// lib/screens/main_screen.dart
 import 'package:flutter/material.dart';
-import '../l10n/app_localizations.dart';
+import 'package:kamgar_sahayak/locale_provider.dart';
+import 'package:provider/provider.dart';
 import '../widgets/app_header.dart';
+import 'legal_rights_screen.dart';
 
 class MainScreen extends StatelessWidget {
+  const MainScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
     return Scaffold(
-      backgroundColor: Color(0xFF1A3C5A),
+      backgroundColor: const Color(0xFF1A3C5A),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: const AppHeader(
+          showProfileButton: true,
+        ),
+      ),
+
       body: SafeArea(
         child: Column(
           children: [
-            AppHeader(),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Container(
-              padding: EdgeInsets.all(16),
-              margin: EdgeInsets.symmetric(horizontal: 16),
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border.all(color: Colors.orange),
@@ -27,22 +36,19 @@ class MainScreen extends StatelessWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      children: const [
                         Text(
-                          localizations.appTitle,
+                          'Kamgar Sahayak',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
                         ),
-                        SizedBox(height: 5),
+                        SizedBox(height: 6),
                         Text(
-                          localizations.legalAdvice,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black,
-                          ),
+                          'Legal advice for Everyone.',
+                          style: TextStyle(fontSize: 14, color: Colors.black),
                         ),
                       ],
                     ),
@@ -51,47 +57,51 @@ class MainScreen extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildActionButton(context, localizations.liveChat, Icons.chat, () {}),
-                _buildActionButton(context, localizations.yourRights, Icons.book, () {
-                  Navigator.pushNamed(context, '/legal_rights');
+                _actionBtn(context, 'Live Chat', Icons.chat, () {}),
+                _actionBtn(context, 'Your Rights', Icons.book, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LegalRightsScreen()),
+                  );
                 }),
               ],
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: localizations.searchLegalDocument,
-                  hintStyle: TextStyle(color: Colors.grey),
-                  prefixIcon: Icon(Icons.filter_list, color: Colors.grey),
-                  suffixIcon: Icon(Icons.search, color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.white,
+                  hintText: 'Search Legal Document...',
+                  prefixIcon: const Icon(Icons.filter_list),
+                  suffixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: Colors.grey),
                   ),
                 ),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 12),
             Container(
-              color: Colors.blue[900],
-              padding: EdgeInsets.all(8),
-              child: Text(
-                localizations.recentlySearchedDocuments,
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              color: Colors.white,
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              child: const Text(
+                'Recently Searched Documents',
+                style: TextStyle(color: Colors.blue),
               ),
             ),
             Expanded(
               child: ListView(
                 children: [
-                  _buildDocumentRow(context, 'PAYMENT OF WAGES...'),
-                  _buildDocumentRow(context, 'MINIMUM WAGES A...'),
-                  _buildDocumentRow(context, 'THE CODE ON WA...'),
+                  _docRow(context, 'PAYMENT OF WAGES...'),
+                  _docRow(context, 'MINIMUM WAGES A...'),
+                  _docRow(context, 'THE CODE ON WA...'),
                 ],
               ),
             ),
@@ -101,32 +111,28 @@ class MainScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(BuildContext context, String text, IconData icon, VoidCallback onPressed) {
+  Widget _actionBtn(BuildContext context, String label, IconData icon, VoidCallback onTap) {
     return Column(
       children: [
         CircleAvatar(
           radius: 30,
           backgroundColor: Colors.white,
-          child: IconButton(
-            icon: Icon(icon, color: Colors.orange, size: 30),
-            onPressed: onPressed,
-          ),
+          child: IconButton(icon: Icon(icon, color: Colors.orange), onPressed: onTap),
         ),
-        SizedBox(height: 5),
-        Text(text, style: TextStyle(color: Colors.white)),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(color: Colors.white)),
       ],
     );
   }
 
-  Widget _buildDocumentRow(BuildContext context, String documentName) {
+  Widget _docRow(BuildContext context, String title) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(child: Text(documentName, style: TextStyle(color: Colors.white))),
-          IconButton(icon: Icon(Icons.download, color: Colors.white), onPressed: () {}),
-          IconButton(icon: Icon(Icons.visibility, color: Colors.white), onPressed: () {}),
+          Expanded(child: Text(title, style: const TextStyle(color: Colors.white))),
+          IconButton(icon: const Icon(Icons.download, color: Colors.white), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.visibility, color: Colors.white), onPressed: () {}),
         ],
       ),
     );
