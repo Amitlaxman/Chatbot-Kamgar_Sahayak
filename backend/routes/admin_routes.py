@@ -248,3 +248,16 @@ async def answer_query(
     except Exception as e:
         logger.error(f"Error submitting admin answer: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to submit admin answer")
+
+@router.get("/marked_queries", response_model=List[Dict[str, Any]])
+async def get_marked_queries(current_user: Dict[str, Any] = Depends(get_current_admin_user)):
+    from backend.db.mongo_utils import get_admin_db
+    admin_db = get_admin_db()
+    marked_raw = list(admin_db["admin_marking"].find({}, {"_id": 0, "query_id": 1, "query_log": 1}))
+    marked = []
+    for m in marked_raw:
+        marked.append({
+            "query_id": m.get("query_id"),
+            "question": (m.get("query_log", {}).get("question") or m.get("query_log", {}).get("query_text") or "")
+        })
+    return marked
