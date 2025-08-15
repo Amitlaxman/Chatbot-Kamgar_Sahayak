@@ -4,6 +4,7 @@ import 'package:kamgar_sahayak/locale_provider.dart';
 import 'package:provider/provider.dart';
 import '../widgets/app_header.dart';
 import 'legal_rights_screen.dart';
+import 'chat_screen.dart'; // <-- Import ChatScreen
 
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
@@ -18,7 +19,6 @@ class MainScreen extends StatelessWidget {
           showProfileButton: true,
         ),
       ),
-
       body: SafeArea(
         child: Column(
           children: [
@@ -61,7 +61,12 @@ class MainScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _actionBtn(context, 'Live Chat', Icons.chat, () {}),
+                _actionBtn(context, 'Live Chat', Icons.chat, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ChatScreen()), // <-- Route to ChatScreen
+                  );
+                }),
                 _actionBtn(context, 'Your Rights', Icons.book, () {
                   Navigator.push(
                     context,
