@@ -15,6 +15,8 @@ const AdminDashboard = () => {
   const getToken = () => localStorage.getItem('adminToken') || "";
 
   // Fetch unanswered queries and logs
+  const [markedQueries, setMarkedQueries] = useState([]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -22,12 +24,20 @@ const AdminDashboard = () => {
         const unansweredRes = await axios.get(`${API_BASE}/unanswered_queries`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setUnanswered(unansweredRes.data);
+  // Only show queries with status 'unanswered'
+  const filtered = unansweredRes.data.filter(q => (q.status === 'unanswered' || !q.status));
+  setUnanswered(filtered);
 
         const logsRes = await axios.get(`${API_BASE}/logs`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setLogs(logsRes.data);
+
+        // Fetch marked queries from admin_marking
+        const markedRes = await axios.get(`${API_BASE}/marked_queries`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setMarkedQueries(markedRes.data.map(m => m.query_id));
       } catch (err) {
         console.error("Error fetching data", err);
       }
@@ -111,7 +121,9 @@ const AdminDashboard = () => {
                   <td>{query.user || query.user_id || query.asked_by || "N/A"}</td>
                   <td>{query.date || query.asked_at || query.timestamp || query.created_at || "N/A"}</td>
                   <td>
-                    {activeRow === query._id ? (
+                    {markedQueries.includes(query._id) ? (
+                      <button style={{ backgroundColor: 'orange', color: 'white', cursor: 'not-allowed' }} disabled>Marked</button>
+                    ) : activeRow === query._id ? (
                       <>
                         {!chooseAction && (
                           <>

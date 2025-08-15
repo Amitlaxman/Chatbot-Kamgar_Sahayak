@@ -1,3 +1,5 @@
+# ...existing code...
+
 from fastapi import APIRouter, HTTPException, Depends, status, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from bson import ObjectId 
@@ -180,11 +182,20 @@ async def mark_query(
     Mark a query as Irrelevant, Answerable, or Pending. Stores in admin_marking collection.
     """
     if current_user["role"] != "admin":
+        logger.error(f"Mark query failed: user {current_user['email']} is not admin.")
         raise HTTPException(status_code=403, detail="Only admins can mark queries")
     mark_status = mark_data.get("status")
     if mark_status not in ["Irrelevant", "Answerable", "Pending"]:
+        logger.error(f"Mark query failed: invalid status {mark_status}")
         raise HTTPException(status_code=400, detail="Invalid mark status")
     try:
+        # Prevent duplicate marking for the same query
+        from backend.db.mongo_utils import get_admin_db
+        admin_db = get_admin_db()
+        already_marked = admin_db["admin_marking"].find_one({"query_id": query_id})
+        if already_marked:
+            logger.info(f"Query {query_id} already marked, skipping insert.")
+            return {"message": "Query already marked"}
         entry = {
             "query_id": query_id,
             "marked_by": current_user["email"],
@@ -192,7 +203,9 @@ async def mark_query(
             "marked_at": datetime.utcnow(),
             "query_log": mark_data.get("query_log", {})
         }
+        logger.info(f"Inserting admin marking: {entry}")
         insert_admin_marking(entry)
+        logger.info(f"Marking inserted for query {query_id}")
         return {"message": "Query marked successfully"}
     except Exception as e:
         logger.error(f"Error marking query: {e}", exc_info=True)
@@ -209,10 +222,12 @@ async def answer_query(
     Submit an answer for a query. Stores in admin_answers collection with extracted keywords.
     """
     if current_user["role"] != "admin":
+        logger.error(f"Answer query failed: user {current_user['email']} is not admin.")
         raise HTTPException(status_code=403, detail="Only admins can answer queries")
     answer_text = answer_data.get("answer")
     query_log = answer_data.get("query_log", {})
     if not answer_text or answer_text.strip() == "":
+        logger.error(f"Answer query failed: empty answer for query {query_id}")
         raise HTTPException(status_code=400, detail="Answer cannot be empty")
     # Extract keywords from question (simple split, can be improved)
     question = query_log.get("question", "")
@@ -226,7 +241,9 @@ async def answer_query(
             "query_log": query_log,
             "keywords": keywords
         }
+        logger.info(f"Inserting admin answer: {entry}")
         insert_admin_answer(entry)
+        logger.info(f"Answer inserted for query {query_id}")
         return {"message": "Answer submitted and logged successfully"}
     except Exception as e:
         logger.error(f"Error submitting admin answer: {e}", exc_info=True)
