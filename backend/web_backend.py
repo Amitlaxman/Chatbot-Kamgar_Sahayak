@@ -1,5 +1,3 @@
-# web_backend.py
-
 from fastapi import APIRouter
 
 router = APIRouter()

@@ -1,10 +1,9 @@
-// src/pages/AdminLogin.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Admin.css";
 
 const AdminLogin = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
@@ -12,20 +11,24 @@ const AdminLogin = () => {
     e.preventDefault();
 
     try {
-      // Later connect to backend API
-      const res = await fetch("http://localhost:5000/api/admin/login", {
+      const formData = new URLSearchParams();
+      formData.append("username", email);
+      formData.append("password", password);
+
+      // Corrected backend URL and headers
+      const res = await fetch("http://localhost:8000/admin_api/token", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem("adminToken", data.token);
+        localStorage.setItem("adminToken", data.access_token);
         navigate("/admin/dashboard");
       } else {
-        alert(data.error || "Invalid credentials");
+        alert(data.detail || "Invalid credentials");
       }
     } catch (error) {
       console.error(error);
@@ -40,8 +43,8 @@ const AdminLogin = () => {
         <input
           type="text"
           placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
 
