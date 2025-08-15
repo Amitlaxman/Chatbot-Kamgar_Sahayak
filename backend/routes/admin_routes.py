@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import logging
 import os
-from backend.db.mongo_utils import get_mongo_db, get_unanswered_logs, get_all_logs_entries, get_admin_user, create_admin_user
+from backend.db.mongo_utils import get_mongo_db, get_unanswered_logs, get_all_logs_entries, get_admin_user, create_admin_user, insert_admin_marking, insert_admin_answer
 from backend.models.chat_model import AdminLogin
 from passlib.context import CryptContext  # For password hashing
 import jwt  # PyJWT for token handling
@@ -167,3 +167,67 @@ async def submit_answer(
     except Exception as e:
         logger.error(f"Error submitting answer: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to submit answer")
+
+
+# --- New: Mark Query Endpoint ---
+@router.post("/mark_query/{query_id}")
+async def mark_query(
+    query_id: str,
+    mark_data: Dict[str, Any] = Body(...),
+    current_user: Dict[str, Any] = Depends(get_current_admin_user),
+):
+    """
+    Mark a query as Irrelevant, Answerable, or Pending. Stores in admin_marking collection.
+    """
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can mark queries")
+    mark_status = mark_data.get("status")
+    if mark_status not in ["Irrelevant", "Answerable", "Pending"]:
+        raise HTTPException(status_code=400, detail="Invalid mark status")
+    try:
+        entry = {
+            "query_id": query_id,
+            "marked_by": current_user["email"],
+            "status": mark_status,
+            "marked_at": datetime.utcnow(),
+            "query_log": mark_data.get("query_log", {})
+        }
+        insert_admin_marking(entry)
+        return {"message": "Query marked successfully"}
+    except Exception as e:
+        logger.error(f"Error marking query: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to mark query")
+
+# --- New: Admin Answer Endpoint ---
+@router.post("/answer_query/{query_id}")
+async def answer_query(
+    query_id: str,
+    answer_data: Dict[str, Any] = Body(...),
+    current_user: Dict[str, Any] = Depends(get_current_admin_user),
+):
+    """
+    Submit an answer for a query. Stores in admin_answers collection with extracted keywords.
+    """
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can answer queries")
+    answer_text = answer_data.get("answer")
+    query_log = answer_data.get("query_log", {})
+    if not answer_text or answer_text.strip() == "":
+        raise HTTPException(status_code=400, detail="Answer cannot be empty")
+    # Extract keywords from question (simple split, can be improved)
+    question = query_log.get("question", "")
+    keywords = [w for w in question.split() if len(w) > 3]
+    try:
+        entry = {
+            "query_id": query_id,
+            "answered_by": current_user["email"],
+            "answer": answer_text,
+            "answered_at": datetime.utcnow(),
+            "query_log": query_log,
+            "keywords": keywords
+        }
+        insert_admin_answer(entry)
+        return {"message": "Answer submitted and logged successfully"}
+    except Exception as e:
+        logger.error(f"Error submitting admin answer: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to submit admin answer")

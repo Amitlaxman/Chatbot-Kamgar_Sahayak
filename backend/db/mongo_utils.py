@@ -52,7 +52,13 @@ async def insert_log_entry(entry: Dict[str, Any]) -> str:
     return str(result.inserted_id)
 
 def get_unanswered_logs() -> List[Dict[str, Any]]:
-    logs = get_chatbot_db()["logs"].find({"answer": None})
+    logs = get_chatbot_db()["logs"].find({
+        "$or": [
+            {"answer": None},
+            {"answer": ""},
+            {"answer": {"$exists": False}}
+        ]
+    })
     return [{**log, "_id": str(log["_id"])} for log in logs]
 
 def get_all_logs_entries() -> List[Dict[str, Any]]:
@@ -65,6 +71,18 @@ def get_admin_db():
     if admin_db is None:
         raise ConnectionFailure("Admin DB connection not established.")
     return admin_db
+
+# --- New: Insert into admin_marking ---
+def insert_admin_marking(entry: Dict[str, Any]) -> str:
+    result = get_admin_db()["admin_marking"].insert_one(entry)
+    logger.info(f"Admin marking inserted with ID: {result.inserted_id}")
+    return str(result.inserted_id)
+
+# --- New: Insert into admin_answers ---
+def insert_admin_answer(entry: Dict[str, Any]) -> str:
+    result = get_admin_db()["admin_answers"].insert_one(entry)
+    logger.info(f"Admin answer inserted with ID: {result.inserted_id}")
+    return str(result.inserted_id)
 
 async def create_user(user_data: Dict[str, Any]) -> str:
     users_collection = get_admin_db()["users"]

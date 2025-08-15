@@ -1,94 +1,182 @@
-// src/pages/AdminDashboard.jsx
 import React, { useEffect, useState } from "react";
-import "../styles/Admin.css";
+import axios from "axios";
+
+const API_BASE = "http://localhost:8000/admin_api"; // Change if needed
 
 const AdminDashboard = () => {
-  const [queries, setQueries] = useState([]);
-  const [answers, setAnswers] = useState({});
+  const [unanswered, setUnanswered] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [activeRow, setActiveRow] = useState(null);
+  const [chooseAction, setChooseAction] = useState(""); // "mark" or "answer"
+  const [markStatus, setMarkStatus] = useState("");
+  const [answerText, setAnswerText] = useState("");
 
+  // Always get token from localStorage
+  const getToken = () => localStorage.getItem('adminToken') || "";
+
+  // Fetch unanswered queries and logs
   useEffect(() => {
-    fetchQueries();
+    const fetchData = async () => {
+      try {
+        const token = getToken();
+        const unansweredRes = await axios.get(`${API_BASE}/unanswered_queries`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUnanswered(unansweredRes.data);
+
+        const logsRes = await axios.get(`${API_BASE}/logs`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setLogs(logsRes.data);
+      } catch (err) {
+        console.error("Error fetching data", err);
+      }
+    };
+    fetchData();
   }, []);
 
-  const fetchQueries = async () => {
+  // Handle Choose button
+  const handleChoose = (rowId) => {
+    setActiveRow(rowId);
+    setChooseAction("");
+    setMarkStatus("");
+    setAnswerText("");
+  };
+
+  // Handle Mark
+
+  const handleMark = async (status, query) => {
     try {
-      const token = localStorage.getItem("adminToken");
-      const res = await fetch("http://localhost:8000/admin_api/unanswered_queries", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch queries");
-      const data = await res.json();
-      setQueries(data);
-    } catch (error) {
-      console.error(error);
+      const token = getToken();
+      await axios.post(
+        `${API_BASE}/mark_query/${query._id}`,
+        {
+          status,
+          query_log: query,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert("Marked successfully!");
+      setActiveRow(null);
+      setChooseAction("");
+      // Optionally refresh unanswered
+    } catch (err) {
+      alert("Error marking query");
     }
   };
 
-  const handleAnswerSubmit = async (id) => {
-    try {
-      const token = localStorage.getItem("adminToken");
-      const res = await fetch(`http://localhost:8000/admin_api/answer/${id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ answer: answers[id] }),
-      });
+  // Handle Answer
 
-      if (res.ok) {
-        alert("Answer submitted");
-        setAnswers((prev) => ({ ...prev, [id]: "" }));
-        fetchQueries();
-      } else {
-        const err = await res.json();
-        alert(err.detail || "Failed to submit answer");
-      }
-    } catch (error) {
-      console.error(error);
+  const handleAnswerSubmit = async (query) => {
+    try {
+      const token = getToken();
+      await axios.post(
+        `${API_BASE}/answer_query/${query._id}`,
+        {
+          answer: answerText,
+          query_log: query,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert("Answer submitted!");
+      setActiveRow(null);
+      setChooseAction("");
+      setAnswerText("");
+      // Optionally refresh unanswered
+    } catch (err) {
+      alert("Error submitting answer");
     }
   };
 
   return (
-    <div className="admin-dashboard-container">
-      <h2>Pending Queries</h2>
-      {queries.length === 0 ? (
-        <p>No pending queries</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Question</th>
-              <th>Asked By</th>
-              <th>Answer</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {queries.map((q) => (
-              <tr key={q._id}>
-                <td>{q.query_text}</td>
-                <td>{q.user_id}</td>
-                <td>
-                  <textarea
-                    value={answers[q._id] || ""}
-                    onChange={(e) =>
-                      setAnswers({ ...answers, [q._id]: e.target.value })
-                    }
-                  />
-                </td>
-                <td>
-                  <button onClick={() => handleAnswerSubmit(q._id)}>
-                    Submit
-                  </button>
-                </td>
+    <div className="admin-dashboard" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+      <div style={{ flex: 1 }}>
+        <h2>Unanswered Queries</h2>
+        {unanswered.length === 0 ? (
+          <p>No unanswered queries found.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Question</th>
+                <th>User</th>
+                <th>Date</th>
+                <th>Choose</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {unanswered.map((query) => (
+                <tr key={query._id}>
+                  <td>{query.question || query.query_text || query.text || "N/A"}</td>
+                  <td>{query.user || query.user_id || query.asked_by || "N/A"}</td>
+                  <td>{query.date || query.asked_at || query.timestamp || query.created_at || "N/A"}</td>
+                  <td>
+                    {activeRow === query._id ? (
+                      <>
+                        {!chooseAction && (
+                          <>
+                            <button onClick={() => setChooseAction("mark")}>Mark</button>
+                            <button onClick={() => setChooseAction("answer")}>Answer</button>
+                          </>
+                        )}
+                        {chooseAction === "mark" && (
+                          <div>
+                            <button onClick={() => handleMark("Irrelevant", query)}>Irrelevant</button>
+                            <button onClick={() => handleMark("Answerable", query)}>Answerable</button>
+                            <button onClick={() => handleMark("Pending", query)}>Pending</button>
+                          </div>
+                        )}
+                        {chooseAction === "answer" && (
+                          <div>
+                            <textarea
+                              value={answerText}
+                              onChange={(e) => setAnswerText(e.target.value)}
+                              placeholder="Type your answer here"
+                            />
+                            <button onClick={() => handleAnswerSubmit(query)}>Submit</button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <button onClick={() => handleChoose(query._id)}>Choose</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      <div style={{ flex: 1 }}>
+        <h2>Chatbot Logs</h2>
+        {logs.length === 0 ? (
+          <p>No logs found.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Question</th>
+                <th>Answer</th>
+                <th>User</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log) => (
+                <tr key={log._id}>
+                  <td>{log.question || log.query_text || log.text || "N/A"}</td>
+                  <td>{log.answer || log.response || "N/A"}</td>
+                  <td>{log.user || log.user_id || log.asked_by || "N/A"}</td>
+                  <td>{log.date || log.asked_at || log.timestamp || log.created_at || "N/A"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 };
 
 export default AdminDashboard;
+// src/pages/AdminDashboard.jsx
