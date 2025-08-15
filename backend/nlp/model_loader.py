@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 # Global model instance
 model: Optional[SentenceTransformer] = None
 
-async def load_nlp_model(model_name: str) -> None:
+def load_nlp_model(model_name: str) -> None:
     """
     Loads the sentence transformer model for generating embeddings.
     Args:
@@ -26,7 +26,7 @@ def get_model() -> Optional[SentenceTransformer]:
     """Returns the loaded model instance."""
     return model
 
-async def generate_embedding(text: str) -> list:
+def generate_embedding(text: str) -> list:
     """
     Generates embedding for the given text using the loaded model.
     Args:
@@ -42,3 +42,6 @@ async def generate_embedding(text: str) -> list:
     except Exception as e:
         logger.error(f"Error generating embedding: {e}", exc_info=True)
         raise
+
+# Load model on import or call explicitly once on app startup
+load_nlp_model("paraphrase-multilingual-MiniLM-L12-v2")

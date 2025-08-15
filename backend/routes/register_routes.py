@@ -1,15 +1,23 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, EmailStr
+from typing import Optional
+from backend.db.mongo_utils import create_user  # fixed import
 
 router = APIRouter()
 
-class RegisterData(BaseModel):
+class UserRegisterData(BaseModel):
     name: str
-    address: str
-    workType: str
+    email: EmailStr
+    password: str
+    address: Optional[str] = None
+    workType: Optional[str] = None
 
-@router.post("/register")
-def register_labour(data: RegisterData):
-    # For now, just print the data (later, you can save it to DB)
-    print("Registered Labour:", data.dict())
-    return {"message": "Registration successful!"}
+@router.post("/register-user")
+async def register_user(data: UserRegisterData):
+    try:
+        user_id = await create_user(data.dict())
+        return {"message": "User registered successfully!", "user_id": user_id}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal Server Error")
