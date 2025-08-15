@@ -13,9 +13,10 @@ const AdminDashboard = () => {
   const fetchQueries = async () => {
     try {
       const token = localStorage.getItem("adminToken");
-      const res = await fetch("http://localhost:5000/api/admin/queries", {
+      const res = await fetch("http://localhost:8000/admin_api/unanswered_queries", {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) throw new Error("Failed to fetch queries");
       const data = await res.json();
       setQueries(data);
     } catch (error) {
@@ -26,7 +27,7 @@ const AdminDashboard = () => {
   const handleAnswerSubmit = async (id) => {
     try {
       const token = localStorage.getItem("adminToken");
-      const res = await fetch(`http://localhost:5000/api/admin/answer/${id}`, {
+      const res = await fetch(`http://localhost:8000/admin_api/answer/${id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -37,9 +38,11 @@ const AdminDashboard = () => {
 
       if (res.ok) {
         alert("Answer submitted");
-        fetchQueries(); // refresh list
+        setAnswers((prev) => ({ ...prev, [id]: "" }));
+        fetchQueries();
       } else {
-        alert("Failed to submit answer");
+        const err = await res.json();
+        alert(err.detail || "Failed to submit answer");
       }
     } catch (error) {
       console.error(error);
@@ -64,8 +67,8 @@ const AdminDashboard = () => {
           <tbody>
             {queries.map((q) => (
               <tr key={q._id}>
-                <td>{q.question}</td>
-                <td>{q.askedBy}</td>
+                <td>{q.query_text}</td>
+                <td>{q.user_id}</td>
                 <td>
                   <textarea
                     value={answers[q._id] || ""}

@@ -8,7 +8,7 @@ import Footer from './components/Footer';
 
 import Home from './pages/Home';
 import ChatBot from './components/ChatBot';
-import SignIn from './pages/SignIn';
+import SignIn from './pages/Login';
 import OtpVerify from './pages/OtpVerify';
 import Register from './pages/Register';
 import AdminLogin from './pages/AdminLogin';

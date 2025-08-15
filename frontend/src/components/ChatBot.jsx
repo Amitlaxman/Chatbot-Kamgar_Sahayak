@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import ChatInput from './ChatInput';
 import '../styles/ChatBot.css'; // optional, keep or adapt to your existing CSS
 
-const PY_NLP_URL = 'http://localhost:5001/get_answer';   
+const PY_NLP_URL = 'http://localhost:8000/chat_api/chat';   
     // Python NLP backend
 const ADMIN_REPORT_URL = 'http://localhost:5000/api/admin/report'; // optional Node API for admin reporting
 
@@ -54,17 +54,20 @@ const ChatBot = ({ language = 'hi' }) => {
 
     try {
       const resp = await fetch(PY_NLP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userText })
-      });
-
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    query_text: userText,
+    user_id: "anonymous_user",  // replace with actual user id if available
+    language: language          // your component's language prop
+  }),
+});
       if (!resp.ok) {
         throw new Error(`NLP backend error: ${resp.status}`);
       }
 
       const data = await resp.json();
-      const answer = data.answer ?? '';
+      const answer = data.bot_response ?? '';
 
       if (answer === 'ASK_ADMIN') {
         // Inform user and send to admin
