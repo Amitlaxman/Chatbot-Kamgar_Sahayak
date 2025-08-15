@@ -9,7 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 
+# --- Import your existing routers ---
 from backend.routes import chat_routes, admin_routes, register_routes, otp_routes
+
+# --- Import the new APK router ---
+from apk_router import router as apk_router
+
 from backend.db.mongo_utils import connect_to_mongo, close_mongo_connection, get_admin_user
 from backend.nlp.model_loader import load_nlp_model
 
@@ -109,6 +114,9 @@ app.include_router(chat_routes.router, prefix="/chat_api", tags=["Chatbot"])
 app.include_router(admin_routes.router, prefix="/admin_api", tags=["Admin"])
 app.include_router(register_routes.router, prefix="/register_api", tags=["Register"])
 app.include_router(otp_routes.router, prefix="/otp_api", tags=["OTP"])
+
+# --- NEW: Include the APK router ---
+app.include_router(apk_router, prefix="/app", tags=["APK Download"])
 
 # --- Root ---
 @app.get("/")
