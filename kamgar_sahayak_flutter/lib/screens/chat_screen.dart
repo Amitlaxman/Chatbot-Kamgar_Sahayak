@@ -49,7 +49,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("MP Labour Chatbot")),
+      appBar: AppBar(title: const Text("Kaamgar Sahayak Chatbot")),
       body: Column(
         children: [
           Expanded(
