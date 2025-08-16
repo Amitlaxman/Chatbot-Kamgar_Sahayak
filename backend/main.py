@@ -1,3 +1,6 @@
+
+
+# --- Imports ---
 import os
 import logging
 import jwt
@@ -6,23 +9,25 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from jwt import exceptions as jwt_exceptions
-from contextlib import asynccontextmanager # Import the context manager
+from contextlib import asynccontextmanager
+from fastapi.security import OAuth2PasswordBearer
 
+# --- Routers ---
 from backend.routes import chat_routes, admin_routes, register_routes, otp_routes
+from backend.apk_router import router as apk_router
 from backend.db.mongo_utils import connect_to_mongo, close_mongo_connection, get_admin_user
 from backend.nlp.model_loader import load_nlp_model
 
 # --- Load Environment Variables ---
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME")
-NLP_MODEL_NAME = os.getenv("NLP_MODEL_NAME")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://Elixir:elixir@clutter.3ary0d9.mongodb.net/chatbot_db?retryWrites=true&w=majority")
+DB_NAME = os.getenv("DB_NAME", "chatbot_db")
+NLP_MODEL_NAME = os.getenv("NLP_MODEL_NAME", "paraphrase-multilingual-MiniLM-L12-v2")
 ADMIN_DB_NAME = os.getenv("ADMIN_DB_NAME", "admin_db")
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-please-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -64,7 +69,7 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)) -> dict:
     except jwt_exceptions.PyJWTError:
         raise credentials_exception
 
-# --- NEW: Lifespan Context Manager ---
+# --- Lifespan Context Manager ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- Startup Logic ---
@@ -78,23 +83,21 @@ async def lifespan(app: FastAPI):
         logger.error(f"Startup failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Backend failed to start")
 
-    # The `yield` is the key. It pauses here, and the app runs.
     yield
-    
+
     # --- Shutdown Logic ---
     logger.info("Shutting down backend...")
     await close_mongo_connection()
     logger.info("MongoDB connection closed.")
 
 # --- FastAPI App ---
-# Use the new lifespan context when creating the app instance
 app = FastAPI(
     title="Shramik Saathi Chatbot Backend",
     description="Backend API for the multilingual chatbot assisting laborers in MP, India",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan # Pass the lifespan to FastAPI
+    lifespan=lifespan
 )
 
 # --- CORS ---
@@ -111,6 +114,7 @@ app.include_router(chat_routes.router, prefix="/chat_api", tags=["Chatbot"])
 app.include_router(admin_routes.router, prefix="/admin_api", tags=["Admin"])
 app.include_router(register_routes.router, prefix="/register_api", tags=["Register"])
 app.include_router(otp_routes.router, prefix="/otp_api", tags=["OTP"])
+app.include_router(apk_router, prefix="/app", tags=["APK Download"])
 
 # --- Root ---
 @app.get("/")
