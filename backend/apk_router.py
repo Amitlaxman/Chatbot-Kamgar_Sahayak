@@ -6,14 +6,13 @@ import os
 
 router = APIRouter()
 
-APK_DIRECTORY = "apks"
+APK_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "apk"))
 
 @router.get("/download")
 async def download_apk():
     apk_name = "app-release.apk"
     file_path = os.path.join(APK_DIRECTORY, apk_name)
-    
-    # Check if the file exists
+    # Check 
     if os.path.exists(file_path):
         return FileResponse(
             path=file_path,
@@ -21,4 +20,4 @@ async def download_apk():
             filename=apk_name
         )
     else:
-        return {"error": "APK not found"}
+        return {"error": f"APK not found at {file_path}"}
