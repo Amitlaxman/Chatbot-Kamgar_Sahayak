@@ -118,6 +118,23 @@ async def chat_with_bot(query: ChatQuery):
             bot_response_text = ("I'm sorry, I don't have a precise answer for that right now. "
                                  "Your query has been noted for review by our team.")
             status_text = "unanswered"
+            # Send email to admin with full query log info
+            try:
+                from backend.services.email_service import send_email
+                subject = "Unanswered Query Notification"
+                body = (
+                    f"A new unanswered query was received.\n\n"
+                    f"User ID: {user_id}\n"
+                    f"Query Text: {user_query_text}\n"
+                    f"Language: {language}\n"
+                    f"Timestamp: {datetime.now()}\n"
+                    f"Similarity Score: {similarity_score}\n"
+                )
+                admin_email = os.getenv("ADMIN_EMAIL_RECEIVER", "kaaamgar.sahayak@gmail.com")
+                send_email(subject, body, admin_email)
+                logger.info(f"Unanswered query email sent to {admin_email}")
+            except Exception as e:
+                logger.error(f"Failed to send unanswered query email: {e}", exc_info=True)
 
     except Exception as e:
         logger.error(f"Error processing chat query '{user_query_text}': {e}", exc_info=True)

@@ -1,4 +1,3 @@
-# ...existing code...
 
 from fastapi import APIRouter, HTTPException, Depends, status, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -15,6 +14,8 @@ import jwt  # PyJWT for token handling
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+from backend.services.email_service import send_email
+
 # --- Security Setup ---
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-please-change-this-in-production")
 ALGORITHM = "HS256"
@@ -22,6 +23,64 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admin_api/token")
+
+async def get_current_admin_user (token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        user = await get_admin_user(email)
+        if user is None:
+            raise credentials_exception
+        return user
+    except jwt.PyJWTError:
+        raise credentials_exception
+
+# --- New: Mail Unanswered Queries Endpoint ---
+@router.post("/mail_unanswered")
+async def mail_unanswered_queries(current_user: dict = Depends(get_current_admin_user)):
+    try:
+        unanswered = get_unanswered_logs()
+        if not unanswered:
+            return {"message": "No unanswered queries found."}
+        # Format email body
+        body = "Unanswered Queries:\n\n"
+        for q in unanswered:
+            body += f"ID: {q.get('_id', q.get('id', ''))}\nQuestion: {q.get('question', '')}\nAsked By: {q.get('user', '')}\nDate: {q.get('date', '')}\n---\n"
+        subject = "Unanswered Queries Report"
+        to_email = "kaaamgar.sahayak@gmail.com"
+        from backend.services.email_service import send_email
+        success = send_email(subject, body, to_email)
+        logger.info(f"send_email returned: {success}")
+        if success:
+            return {"message": f"Unanswered queries mailed to {to_email}"}
+        else:
+            return {"error": "Failed to send email. Check logs for details."}
+    except Exception as e:
+        logger.error(f"Failed to mail unanswered queries: {e}")
+        return {"error": str(e)}
+
+# --- Utility: Add admin user with known password if not present ---
+@router.post("/force_add_admin")
+async def force_add_admin():
+    from backend.db.mongo_utils import get_admin_user, create_admin_user
+    email = "kaaamgar.sahayak@gmail.com"
+    password = "Passswoord"
+    user = await get_admin_user(email)
+    if user:
+        return {"message": "Admin already exists."}
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed_password = pwd_context.hash(password)
+    admin_data = {"email": email, "hashed_password": hashed_password, "role": "admin"}
+    await create_admin_user(admin_data)
+    return {"message": f"Admin {email} created with password '{password}'"}
 
 
 def verify_password(plain_password, hashed_password):
@@ -40,23 +99,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-async def get_current_admin_user(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-        user = await get_admin_user(email)
-        if user is None:
-            raise credentials_exception
-        return user
-    except jwt.PyJWTError:
-        raise credentials_exception
 
 
 @router.get("/unanswered_logs", response_model=List[Dict[str, Any]])
