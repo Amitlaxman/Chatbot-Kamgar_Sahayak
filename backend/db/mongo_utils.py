@@ -90,7 +90,9 @@ async def create_user(user_data: Dict[str, Any]) -> str:
     if users_collection.find_one({"email": user_data["email"]}):
         raise ValueError("Email already registered")
 
-    hashed_pw = bcrypt.hashpw(user_data["hashed_password"].encode('utf-8'), bcrypt.gensalt())
+    # Hash the password from the frontend and store as 'hashed_password'
+    plain_pw = user_data.pop("password")
+    hashed_pw = bcrypt.hashpw(plain_pw.encode('utf-8'), bcrypt.gensalt())
     user_data["hashed_password"] = hashed_pw.decode('utf-8')
 
     result = users_collection.insert_one(user_data)

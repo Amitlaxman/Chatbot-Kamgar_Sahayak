@@ -16,6 +16,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 # --- Routers ---
 from backend.routes import chat_routes, admin_routes, register_routes, otp_routes
+from backend.routes.login import router as login_router
 from backend.apk_router import router as apk_router
 from backend.db.mongo_utils import connect_to_mongo, close_mongo_connection, get_admin_user
 from backend.nlp.model_loader import load_nlp_model
@@ -110,10 +111,12 @@ app.add_middleware(
 )
 
 # --- Routers ---
+
 app.include_router(chat_routes.router, prefix="/chat_api", tags=["Chatbot"])
 app.include_router(admin_routes.router, prefix="/admin_api", tags=["Admin"])
 app.include_router(register_routes.router, prefix="/register_api", tags=["Register"])
 app.include_router(otp_routes.router, prefix="/otp_api", tags=["OTP"])
+app.include_router(login_router, prefix="/login_api", tags=["Login"])
 app.include_router(apk_router, prefix="/app", tags=["APK Download"])
 
 # --- Root ---

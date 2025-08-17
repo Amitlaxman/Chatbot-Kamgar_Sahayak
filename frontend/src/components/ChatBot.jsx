@@ -1,10 +1,9 @@
-// src/components/ChatBot.jsx
 import React, { useState, useRef } from 'react';
 import ChatInput from './ChatInput';
-import '../styles/ChatBot.css'; // optional, keep or adapt to your existing CSS
+import '../styles/ChatBot.css'; 
 
 const PY_NLP_URL = 'http://localhost:8000/chat_api/chat';   
-    // Python NLP backend
+
 const ADMIN_REPORT_URL = 'http://localhost:5000/api/admin/report'; // optional Node API for admin reporting
 
 const ChatBot = ({ language = 'hi' }) => {
@@ -22,15 +21,12 @@ const ChatBot = ({ language = 'hi' }) => {
     }, 50);
   };
 
-  // format multi-line answer into JSX (preserves bullets/newlines)
   const renderMessageText = (text) => {
     if (!text) return null;
-    // If the backend returns HTML-like bullets with '-' we keep them.
     return text.split('\n').map((line, i) => <div key={i} style={{ whiteSpace: 'pre-wrap' }}>{line}</div>);
   };
 
   const reportToAdmin = async (question) => {
-    // Try sending to Node admin endpoint if available, otherwise fallback to console/log.
     try {
       const res = await fetch(ADMIN_REPORT_URL, {
         method: 'POST',
@@ -41,7 +37,6 @@ const ChatBot = ({ language = 'hi' }) => {
       return true;
     } catch (err) {
       console.warn('Could not send admin report (no backend?), logging locally:', err);
-      // fallback: append unanswered to a visible bot message or console
       console.log('Unanswered saved (frontend fallback):', question);
       return false;
     }
@@ -52,16 +47,20 @@ const ChatBot = ({ language = 'hi' }) => {
     addMessage('user', userText);
     setLoading(true);
 
+    // Get user email from localStorage
+    const user = JSON.parse(localStorage.getItem("user"));
+    const userId = user?.email || "anonymous_user";
+
     try {
       const resp = await fetch(PY_NLP_URL, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    query_text: userText,
-    user_id: "anonymous_user",  // replace with actual user id if available
-    language: language          // your component's language prop
-  }),
-});
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query_text: userText,
+          user_id: userId,
+          language: language
+        }),
+      });
       if (!resp.ok) {
         throw new Error(`NLP backend error: ${resp.status}`);
       }
