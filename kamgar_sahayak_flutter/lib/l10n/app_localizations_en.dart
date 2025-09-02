@@ -127,4 +127,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get otpVerificationFailed => 'OTP verification failed';
+
+  @override
+  String get guestLogin => 'Log in as Guest';
+
+  @override
+  String get guestLoginFailed => 'Guest login failed';
 }

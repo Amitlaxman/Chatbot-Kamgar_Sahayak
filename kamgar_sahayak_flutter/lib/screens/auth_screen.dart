@@ -36,7 +36,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     final ok = await context.read<UserProvider>().loginWithGoogle();
     setState(() => _loading = false);
     if (ok && mounted) {
-      Navigator.pushReplacementNamed(context, '/main');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
     } else {
       final loc = AppLocalizations.of(context)!;
       _showError(loc.googleSignInFailed);
@@ -87,10 +90,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         );
     setState(() => _loading = false);
     if (ok && mounted) {
-      Navigator.pushReplacementNamed(context, '/main');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
     } else {
       _showError(loc.otpVerificationFailed);
     }
+  }
+
+  void _guestLogin() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const MainScreen()),
+    );
   }
 
   @override
@@ -102,45 +115,39 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     // Auto-redirect if logged in
     if (userProvider.isLoggedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/main');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
       });
     }
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A3C5A), // Blue bg
-
       appBar: PreferredSize(
-  preferredSize: const Size.fromHeight(130), // increase height to fit content
-  child: SafeArea(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AppHeader(showProfileButton: false),
-        TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(
-              icon: const Icon(Icons.login, color: Colors.white),
-              child: Text(
-                loc.signInWithGoogle,
-                style: const TextStyle(color: Colors.white),
+        preferredSize: const Size.fromHeight(130),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppHeader(showProfileButton: false),
+              TabBar(
+                controller: _tabController,
+                tabs: [
+                  Tab(
+                    icon: const Icon(Icons.login, color: Colors.white),
+                    child: Text(loc.signInWithGoogle, style: const TextStyle(color: Colors.white)),
+                  ),
+                  Tab(
+                    icon: const Icon(Icons.phone, color: Colors.white),
+                    child: Text(loc.phoneNumber, style: const TextStyle(color: Colors.white)),
+                  ),
+                ],
               ),
-            ),
-            Tab(
-              icon: const Icon(Icons.phone, color: Colors.white),
-              child: Text(
-                loc.phoneNumber,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ],
-    ),
-  ),
-),
-
-
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.orange))
           : TabBarView(
@@ -148,49 +155,38 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               children: [
                 // Google sign-in tab
                 Center(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.login),
-                    label: Text(loc.signInWithGoogle),
-                    onPressed: _googleSignIn,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.login),
+                        label: Text(loc.signInWithGoogle),
+                        onPressed: _googleSignIn,
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.person_outline),
+                        label: Text(loc.guestLogin ?? "Log in as Guest"),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade700),
+                        onPressed: _guestLogin,
+                      ),
+                    ],
                   ),
                 ),
 
                 // Phone sign-in tab
                 Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: loc.phoneNumber,
-                          labelStyle: const TextStyle(color: Colors.white70),
-                          border: const OutlineInputBorder(),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.orange.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.orange.shade600),
-                          ),
-                          hintText: '+91xxxxxxxxxx',
-                          hintStyle: const TextStyle(color: Colors.white54),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _sendOtp,
-                        child: Text(loc.sendOtp),
-                      ),
-                      if (_verificationId != null) ...[
-                        const SizedBox(height: 12),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                         TextField(
-                          controller: otpController,
-                          keyboardType: TextInputType.number,
+                          controller: phoneController,
+                          keyboardType: TextInputType.phone,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            labelText: loc.enterOtpPrompt,
+                            labelText: loc.phoneNumber,
                             labelStyle: const TextStyle(color: Colors.white70),
                             border: const OutlineInputBorder(),
                             enabledBorder: OutlineInputBorder(
@@ -199,15 +195,48 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             focusedBorder: OutlineInputBorder(
                               borderSide: BorderSide(color: Colors.orange.shade600),
                             ),
+                            hintText: '+91xxxxxxxxxx',
+                            hintStyle: const TextStyle(color: Colors.white54),
                           ),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton(
-                          onPressed: _verifyOtp,
-                          child: Text(loc.verifyOtp),
+                          onPressed: _sendOtp,
+                          child: Text(loc.sendOtp),
                         ),
-                      ]
-                    ],
+                        if (_verificationId != null) ...[
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: otpController,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: loc.enterOtpPrompt,
+                              labelStyle: const TextStyle(color: Colors.white70),
+                              border: const OutlineInputBorder(),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: Colors.orange.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: Colors.orange.shade600),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: _verifyOtp,
+                            child: Text(loc.verifyOtp),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.person_outline),
+                          label: Text(loc.guestLogin ?? "Log in as Guest"),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade700),
+                          onPressed: _guestLogin,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
