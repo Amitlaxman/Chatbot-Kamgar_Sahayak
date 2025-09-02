@@ -127,4 +127,10 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get otpVerificationFailed => 'OTP सत्यापन विफल';
+
+  @override
+  String get guestLogin => 'मेहमान के रूप में लॉगिन करें';
+
+  @override
+  String get guestLoginFailed => 'मेहमान लॉगिन असफल';
 }

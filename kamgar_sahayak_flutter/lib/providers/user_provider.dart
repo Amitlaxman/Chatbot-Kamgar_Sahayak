@@ -22,7 +22,6 @@ class UserProvider extends ChangeNotifier {
     _auth.authStateChanges().listen((u) async {
       _user = u;
       if (u != null) {
-        // persist uid
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('uid', u.uid);
       } else {
@@ -33,7 +32,6 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
     });
 
-    // load if firebase already has user
     _user = _auth.currentUser;
     if (_user != null) {
       final prefs = await SharedPreferences.getInstance();
@@ -77,7 +75,10 @@ class UserProvider extends ChangeNotifier {
     required String smsCode,
   }) async {
     try {
-      final u = await verifySmsCode(verificationId: verificationId, smsCode: smsCode);
+      final u = await verifySmsCode(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
       if (u != null) {
         _user = u;
         notifyListeners();
@@ -89,7 +90,7 @@ class UserProvider extends ChangeNotifier {
     return false;
   }
 
-  /// Sign out for logout action
+  /// Sign out
   Future<void> signOutUser() async {
     await signOutAll();
     _user = null;

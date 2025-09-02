@@ -42,5 +42,7 @@
   "phoneVerificationFailed": "फ़ोन सत्यापन विफल",
   "errorSendingOtp": "OTP भेजने में त्रुटि:",
   "pleaseSendOtpFirst": "कृपया पहले OTP भेजें।",
-  "otpVerificationFailed": "OTP सत्यापन विफल"
+  "otpVerificationFailed": "OTP सत्यापन विफल",
+  "guestLogin": "मेहमान के रूप में लॉगिन करें",
+  "guestLoginFailed": "मेहमान लॉगिन असफल"
 }
