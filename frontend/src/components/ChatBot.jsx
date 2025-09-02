@@ -21,9 +21,16 @@ const ChatBot = ({ language = 'hi' }) => {
     }, 50);
   };
 
+  // Render message text with clickable links and line breaks
   const renderMessageText = (text) => {
     if (!text) return null;
-    return text.split('\n').map((line, i) => <div key={i} style={{ whiteSpace: 'pre-wrap' }}>{line}</div>);
+    // Replace <br> and \n with <br />
+    let html = text.replace(/\n/g, '<br />').replace(/<br\s*\/?>(?!\s*<br)/gi, '<br />');
+    // Convert URLs to clickable links
+    html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Optionally, convert www. links
+    html = html.replace(/(^|[^\/])(www\.[^\s<]+)/g, '$1<a href="http://$2" target="_blank" rel="noopener noreferrer">$2</a>');
+    return <span dangerouslySetInnerHTML={{ __html: html }} />;
   };
 
   const reportToAdmin = async (question) => {
