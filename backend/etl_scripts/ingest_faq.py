@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '..', 'backend', '.env'))
 MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME", "chatbot_db")
+DB_NAME = os.getenv("DB_NAME", "legal_db")
 FAQ_COLLECTION = os.getenv("FAQ_COLLECTION", "faqs")
 NLP_MODEL_NAME = os.getenv("NLP_MODEL_NAME", "paraphrase-multilingual-MiniLM-L12-v2")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -42,19 +42,19 @@ def run_etl(faq_data_path: str):
                 "answer_hi": str(row['answer_hi']).strip(),
                 "keywords_en": [k.strip() for k in str(row['keywords_en']).split(',') if k.strip()],
                 "keywords_hi": [k.strip() for k in str(row['keywords_hi']).split(',') if k.strip()],
-                "embedding": []
+                "embedding_en": [],
+                "embedding_hi": [],
+                "topic": str(row.get('category', '')).strip()
             }
-            text_for_embedding = " ".join([
-                faq_doc['question'],
-                faq_doc['answer_en'],
-                faq_doc['answer_hi'],
-                " ".join(faq_doc['keywords_en']),
-                " ".join(faq_doc['keywords_hi'])
-            ]).strip()
-            if not text_for_embedding:
+            text_en = " ".join([faq_doc['question'], faq_doc['answer_en'], " ".join(faq_doc['keywords_en'])]).strip()
+            text_hi = " ".join([faq_doc['question'], faq_doc['answer_hi'], " ".join(faq_doc['keywords_hi'])]).strip()
+            if not text_en and not text_hi:
                 logger.warning(f"Skipping FAQ ID {faq_doc['question_id']} due to missing text for embedding.")
                 continue
-            faq_doc['embedding'] = model.encode(text_for_embedding, convert_to_tensor=False).tolist()
+            if text_en:
+                faq_doc['embedding_en'] = model.encode(text_en, convert_to_tensor=False).tolist()
+            if text_hi:
+                faq_doc['embedding_hi'] = model.encode(text_hi, convert_to_tensor=False).tolist()
             processed_faqs.append(faq_doc)
         logger.info(f"Transformed {len(processed_faqs)} FAQs with embeddings.")
 
@@ -66,7 +66,7 @@ def run_etl(faq_data_path: str):
                     {"$set": faq_doc},
                     upsert=True  # Insert if not found
                 )
-            logger.info(f"Successfully upserted {len(processed_faqs)} FAQs into MongoDB.")
+            logger.info(f"Successfully upserted {len(processed_faqs)} FAQs into MongoDB (DB={DB_NAME}, collection={FAQ_COLLECTION}).")
         else:
             logger.warning("No FAQs to load after processing.")
 

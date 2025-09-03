@@ -10,7 +10,7 @@ from typing import List, Dict, Any
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME", "chatbot_db")
+DB_NAME = os.getenv("DB_NAME", "legal_db")
 KEYWORDS_COLLECTION = os.getenv("KEYWORDS_COLLECTION", "keywords")
 SYNONYMS_DATA_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'keywords_synonyms.csv')
 
@@ -58,7 +58,6 @@ def run_synonyms_etl(data_path: str):
         
         logger.info(f"Transformed {len(synonym_docs)} synonym entries.")
 
-        # --- 4. Load Data ---
         if synonym_docs:
             keywords_collection.delete_many({})
             keywords_collection.insert_many(synonym_docs)

@@ -39,9 +39,16 @@ def get_chatbot_db():
     return chatbot_db
 
 def get_all_faqs() -> List[Dict[str, Any]]:
-    faqs = list(get_chatbot_db()["faqs"].find({}, {"_id": 0}))
-    logger.info(f"Fetched {len(faqs)} FAQs from Chatbot DB.")
-    return faqs
+    db = get_chatbot_db()
+    # Combine documents from all collections except internal ones
+    exclude = {"logs", "users", "admin_marking", "admin_answers", "faqs"}
+    collections = [c for c in db.list_collection_names() if not c.startswith('system.') and c not in exclude]
+    results = []
+    for cname in collections:
+        docs = list(db[cname].find({}, {"_id": 0}))
+        results.extend(docs)
+    logger.info(f"Fetched {len(results)} FAQ-like documents from Chatbot DB collections: {collections}")
+    return results
 # Compatibility alias for old code
 def get_mongo_db():
     return get_chatbot_db()

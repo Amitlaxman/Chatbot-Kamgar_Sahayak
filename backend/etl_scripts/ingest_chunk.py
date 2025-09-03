@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env')))
 
 MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = "legal_db"
+DB_NAME = os.getenv("DB_NAME", "legal_db")
 SBERT_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 DATA_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
 
