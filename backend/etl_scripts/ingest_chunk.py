@@ -41,20 +41,27 @@ def ingest_file_to_mongodb(file_path: str):
         logger.info(f"Connected to collection '{collection_name}' in database '{DB_NAME}'.")
         processed_count = 0
         for chunk in chunks:
-            if "content_en" in chunk and "content_hi" in chunk:
-                try:
-                    chunk['embedding_en'] = sbert_model.encode(chunk["content_en"]).tolist()
-                    chunk['embedding_hi'] = sbert_model.encode(chunk["content_hi"]).tolist()
-                    collection.update_one(
-                        {"source": chunk.get("source"), "state": chunk.get("state")},
-                        {"$set": chunk},
-                        upsert=True
-                    )
-                    processed_count += 1
-                except Exception as embed_e:
-                    logger.error(f"Error generating embeddings for a chunk in {file_path}: {embed_e}. Skipping chunk.")
-            else:
-                logger.warning(f"Skipping chunk in {file_path} due to missing 'content_en' or 'content_hi' field.")
+            # Ensure both content_en and content_hi exist
+            if "content_en" not in chunk:
+                chunk["content_en"] = ""
+            if "content_hi" not in chunk:
+                chunk["content_hi"] = ""
+            try:
+                chunk['embedding_en'] = sbert_model.encode(chunk["content_en"]).tolist()
+                chunk['embedding_hi'] = sbert_model.encode(chunk["content_hi"]).tolist()
+                # Use only 'source' for uniqueness if 'state' is not present
+                filter_dict = {"source": chunk.get("source")}
+                if "state" in chunk:
+                    filter_dict["state"] = chunk.get("state")
+                collection.update_one(
+                    filter_dict,
+                    {"$set": chunk},
+                    upsert=True
+                )
+                processed_count += 1
+                logger.info(f"Indexed chunk: source='{chunk.get('source')}', content_en='{chunk.get('content_en')[:40]}...', content_hi='{chunk.get('content_hi')[:40]}...'")
+            except Exception as embed_e:
+                logger.error(f"Error generating embeddings for a chunk in {file_path}: {embed_e}. Skipping chunk.")
         logger.info(f"Successfully ingested {processed_count} documents from {file_path}.")
         client.close()
         logger.info("MongoDB connection closed.")

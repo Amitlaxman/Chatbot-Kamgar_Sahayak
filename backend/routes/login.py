@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr
-from backend.db.mongo_utils import get_user_by_email, create_user
+from backend.db.mongo_utils import get_user_by_email, create_user, verify_user
 from passlib.context import CryptContext
 import jwt
 import os
@@ -39,11 +39,10 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 
 @router.post("/login")
 async def login_user(data: LoginData):
+    valid = await verify_user(data.email, data.password)
+    if not valid:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     user = await get_user_by_email(data.email)
-    if not user:
-        raise HTTPException(status_code=400, detail="User not found")
-    if not verify_password(data.password, user["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Invalid password")
     access_token = create_access_token({"sub": user["email"], "role": "user"})
     return {"message": "Login successful", "token": access_token, "user": {"name": user["name"], "email": user["email"]}}
 
@@ -52,11 +51,10 @@ async def register_user(data: RegisterData):
     existing_user = await get_user_by_email(data.email)
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    hashed_password = get_password_hash(data.password)
     user_data = {
         "name": data.name,
         "email": data.email,
-        "hashed_password": hashed_password,
+        "password": data.password,
         "address": data.address,
         "workType": data.workType
     }

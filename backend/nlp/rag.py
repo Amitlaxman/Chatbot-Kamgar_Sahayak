@@ -22,14 +22,55 @@ def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         if not all_chunks:
             logger.warning("No chunks found in any collection.")
             return []
+        # Detect language: if query has Devanagari, use Hindi embedding, else English
+        import re
+        if re.search(r'[\u0900-\u097F]', query):
+            emb_field = 'embedding_hi'
+        else:
+            emb_field = 'embedding_en'
+
         query_emb = get_embedding(query)
+        logger.info(f"Query embedding length: {len(query_emb) if hasattr(query_emb,'__len__') else 'unknown'}; using emb_field='{emb_field}'")
+
         scored = []
-        for chunk in all_chunks:
-            text = (chunk.get('content_en', '') or '') + ' ' + (chunk.get('content_hi', '') or '')
-            emb = get_embedding(text)
-            sim = cosine_similarity(query_emb, emb)
-            scored.append((sim, chunk))
+        missing_emb_count = 0
+        for idx, chunk in enumerate(all_chunks):
+            chunk_emb = chunk.get(emb_field)
+            if not chunk_emb:
+                # try common alternate field names
+                chunk_emb = chunk.get('embedding') or chunk.get('embed')
+            if chunk_emb:
+                try:
+                    sim = cosine_similarity(query_emb, chunk_emb)
+                    scored.append((sim, chunk))
+                except Exception as e:
+                    logger.warning(f"Failed similarity calc for chunk idx={idx} topic={chunk.get('source')} : {e}")
+            else:
+                # fallback: compute embedding on-the-fly from available text
+                missing_emb_count += 1
+                text = (chunk.get('content_en') or '') if emb_field == 'embedding_en' else (chunk.get('content_hi') or '')
+                if not text:
+                    # fallback to source
+                    text = chunk.get('source', '')
+                if text:
+                    try:
+                        temp_emb = get_embedding(text)
+                        sim = cosine_similarity(query_emb, temp_emb)
+                        scored.append((sim, chunk))
+                    except Exception as e:
+                        logger.warning(f"On-the-fly embedding failed for chunk idx={idx}: {e}")
+                else:
+                    logger.debug(f"Skipping chunk idx={idx} because no content available to compute embedding.")
+
+        if missing_emb_count:
+            logger.info(f"Chunks missing precomputed embedding: {missing_emb_count}. Used on-the-fly embeddings for those.")
+
+        if not scored:
+            logger.info("No scored chunks after similarity checks.")
+            return []
+
         scored.sort(reverse=True, key=lambda x: x[0])
+        logging.info(f"Similarity scores for top chunks: {[float(s) for s,_ in scored[:top_k]]}")
         return [chunk for sim, chunk in scored[:top_k]]
     except Exception as e:
         logger.error(f"Error in retrieve_relevant_faqs: {e}", exc_info=True)
@@ -41,5 +82,7 @@ def format_context_for_generation(faqs: List[Dict[str, Any]], language: str = 'e
     lines = []
     for i, chunk in enumerate(faqs, 1):
         text = chunk.get('content_hi', '') if language == 'hi' else chunk.get('content_en', '')
-        lines.append(f"Chunk {i}:\n{text}\n")
+        if not text:
+            text = chunk.get('source', '') or str(chunk)
+        lines.append(f"Chunk {i} (Topic: {chunk.get('topic','')}):\n{text}\n")
     return '\n'.join(lines)

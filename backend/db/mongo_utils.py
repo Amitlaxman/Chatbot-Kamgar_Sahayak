@@ -2,7 +2,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
-import bcrypt
+from passlib.context import CryptContext
 
 logger = logging.getLogger(__name__)
 
@@ -85,31 +85,43 @@ def insert_admin_answer(entry: Dict[str, Any]) -> str:
     return str(result.inserted_id)
 
 async def create_user(user_data: Dict[str, Any]) -> str:
-    users_collection = get_admin_db()["users"]
+    """Create a user in the chatbot DB 'users' collection.
+
+    Accepts user_data that contains either 'password' (plain) or 'hashed_password'.
+    """
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    db = get_chatbot_db()
+    users_collection = db["users"]
 
     if users_collection.find_one({"email": user_data["email"]}):
         raise ValueError("Email already registered")
 
-    # Hash the password from the frontend and store as 'hashed_password'
-    plain_pw = user_data.pop("password")
-    hashed_pw = bcrypt.hashpw(plain_pw.encode('utf-8'), bcrypt.gensalt())
-    user_data["hashed_password"] = hashed_pw.decode('utf-8')
+    # Support both plain 'password' and already 'hashed_password'
+    if "password" in user_data:
+        plain_pw = user_data.pop("password")
+        user_data["hashed_password"] = pwd_context.hash(plain_pw)
+    elif "hashed_password" in user_data:
+        # ensure it's a string
+        user_data["hashed_password"] = str(user_data["hashed_password"])
+    else:
+        raise ValueError("Password is required to create a user")
 
-    db = get_chatbot_db()
-    result = db["users"].insert_one(user_data)
+    result = users_collection.insert_one(user_data)
     return str(result.inserted_id)
 
 
 async def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
-    return get_admin_db()["users"].find_one({"email": email})
+    return get_chatbot_db()["users"].find_one({"email": email})
 
-    async def verify_user(email: str, password: str) -> bool:
-        from passlib.context import CryptContext
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        user = await get_user_by_email(email)
-        if not user:
-            return False
-        return pwd_context.verify(password, user["hashed_password"])
+
+async def verify_user(email: str, password: str) -> bool:
+    """Helper that verifies a user's password against the stored hash."""
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    user = await get_user_by_email(email)
+    if not user:
+        return False
+    return pwd_context.verify(password, user.get("hashed_password", ""))
 
 async def get_admin_user(email: str) -> Optional[Dict[str, Any]]:
     return get_admin_db()["admins"].find_one({"email": email})

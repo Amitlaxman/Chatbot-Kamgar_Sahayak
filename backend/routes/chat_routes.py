@@ -88,26 +88,44 @@ async def chat_with_bot(request: ChatRequest):
         context_str = format_context_for_generation(top_chunks, language=language)
         logger.info(f"RAG context for generation:\n{context_str}")
 
-        # Compute similarity scores for debugging
+        # Compute similarity scores for debugging using stored embeddings
         if top_chunks:
-            from backend.nlp.similarity import get_embedding, cosine_similarity
             query_emb = get_embedding(rag_query)
             scored_chunks = []
-            for chunk in top_chunks:
-                text = (chunk.get('content_en', '') or '') + ' ' + (chunk.get('content_hi', '') or '')
-                emb = get_embedding(text)
-                sim = cosine_similarity(query_emb, emb)
+            import re
+            use_hi = bool(re.search(r'[\u0900-\u097F]', rag_query))
+            emb_field = 'embedding_hi' if use_hi else 'embedding_en'
+            for idx, chunk in enumerate(top_chunks):
+                chunk_emb = chunk.get(emb_field) or chunk.get('embedding') or chunk.get('embed')
+                if not chunk_emb:
+                    # fallback to generate embedding from available text
+                    text = (chunk.get('content_hi') if use_hi else chunk.get('content_en')) or chunk.get('source', '')
+                    try:
+                        chunk_emb = get_embedding(text)
+                    except Exception as e:
+                        logger.warning(f"Failed to generate fallback embedding for chunk idx={idx}: {e}")
+                        continue
+                sim = cosine_similarity(query_emb, chunk_emb)
                 scored_chunks.append((sim, chunk))
-            scored_chunks.sort(reverse=True, key=lambda x: x[0])
-            logger.info(f"Similarity scores for top chunks: {[round(s,3) for s,_ in scored_chunks]}")
-            best_score, best_chunk = scored_chunks[0]
-            similarity_score = float(best_score)
-            logger.info(f"Selected chunk with score {similarity_score}")
-            # Always return the top chunk, even if below threshold
-            if language == 'hi':
-                bot_response_text = best_chunk.get('content_hi', 'उत्तर उपलब्ध नहीं है।')
+            if not scored_chunks:
+                logger.info("No scored chunks after attempting to use stored embeddings and fallbacks.")
+                best_score, best_chunk = (0.0, None)
+                similarity_score = None
             else:
-                bot_response_text = best_chunk.get('content_en', 'Answer not available.')
+                scored_chunks.sort(reverse=True, key=lambda x: x[0])
+                logger.info(f"Similarity scores for top chunks: {[round(float(s),3) for s,_ in scored_chunks]}")
+                best_score, best_chunk = scored_chunks[0]
+                similarity_score = float(best_score)
+                logger.info(f"Selected chunk with score {similarity_score}")
+            # Always return the top chunk, even if below threshold
+            if best_chunk:
+                if language == 'hi':
+                    bot_response_text = best_chunk.get('content_hi') or best_chunk.get('content_en') or best_chunk.get('source', 'उत्तर उपलब्ध नहीं है।')
+                else:
+                    bot_response_text = best_chunk.get('content_en') or best_chunk.get('content_hi') or best_chunk.get('source', 'Answer not available.')
+            else:
+                bot_response_text = ('I am sorry, I could not find a relevant chunk. Your query has been logged for review.' if language != 'hi' 
+                                     else 'माफ़ कीजिए, मैं उपयुक्त जानकारी नहीं ढूँढ पाया। आपका प्रश्न समीक्षा के लिए लॉग कर दिया गया है।')
             status_text = "answered" if similarity_score >= CONFIDENCE_THRESHOLD else "low_confidence"
         else:
             bot_response_text = ("I'm sorry, I don't have a precise answer for that right now. "
