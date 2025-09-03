@@ -31,10 +31,8 @@ const Register = () => {
       const data = await response.json();
       alert(data.message);
 
-      localStorage.setItem("isUserLoggedIn", "true");
-      localStorage.setItem("user", JSON.stringify({ name: formData.name, email: formData.email }));
-
-      navigate("/");
+  // Registration successful, redirect to login page
+  navigate("/login");
     } catch (error) {
       alert(`Error: ${error.message}`);
     }

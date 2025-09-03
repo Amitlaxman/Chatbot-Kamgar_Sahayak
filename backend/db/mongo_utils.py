@@ -95,18 +95,21 @@ async def create_user(user_data: Dict[str, Any]) -> str:
     hashed_pw = bcrypt.hashpw(plain_pw.encode('utf-8'), bcrypt.gensalt())
     user_data["hashed_password"] = hashed_pw.decode('utf-8')
 
-    result = users_collection.insert_one(user_data)
-    logger.info(f"👤 User registered with ID: {result.inserted_id}")
+    db = get_chatbot_db()
+    result = db["users"].insert_one(user_data)
     return str(result.inserted_id)
+
 
 async def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     return get_admin_db()["users"].find_one({"email": email})
 
-async def verify_user(email: str, password: str) -> bool:
-    user = await get_user_by_email(email)
-    if not user:
-        return False
-    return bcrypt.checkpw(password.encode('utf-8'), user["hashed_password"].encode('utf-8'))
+    async def verify_user(email: str, password: str) -> bool:
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        user = await get_user_by_email(email)
+        if not user:
+            return False
+        return pwd_context.verify(password, user["hashed_password"])
 
 async def get_admin_user(email: str) -> Optional[Dict[str, Any]]:
     return get_admin_db()["admins"].find_one({"email": email})

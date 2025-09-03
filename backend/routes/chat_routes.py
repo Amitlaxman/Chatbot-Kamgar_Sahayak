@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Configuration
-CONFIDENCE_THRESHOLD = 0.25  # similarity threshold to accept FAQ answer
+CONFIDENCE_THRESHOLD = 0.1  # lowered threshold to increase recall
 KEYWORDS_COLLECTION = os.getenv("KEYWORDS_COLLECTION", "keywords")
 
 
@@ -88,14 +88,27 @@ async def chat_with_bot(request: ChatRequest):
         context_str = format_context_for_generation(top_chunks, language=language)
         logger.info(f"RAG context for generation:\n{context_str}")
 
+        # Compute similarity scores for debugging
         if top_chunks:
-            best_chunk = top_chunks[0]
-            similarity_score = None  # Optionally, compute similarity if needed
+            from backend.nlp.similarity import get_embedding, cosine_similarity
+            query_emb = get_embedding(rag_query)
+            scored_chunks = []
+            for chunk in top_chunks:
+                text = (chunk.get('content_en', '') or '') + ' ' + (chunk.get('content_hi', '') or '')
+                emb = get_embedding(text)
+                sim = cosine_similarity(query_emb, emb)
+                scored_chunks.append((sim, chunk))
+            scored_chunks.sort(reverse=True, key=lambda x: x[0])
+            logger.info(f"Similarity scores for top chunks: {[round(s,3) for s,_ in scored_chunks]}")
+            best_score, best_chunk = scored_chunks[0]
+            similarity_score = float(best_score)
+            logger.info(f"Selected chunk with score {similarity_score}")
+            # Always return the top chunk, even if below threshold
             if language == 'hi':
                 bot_response_text = best_chunk.get('content_hi', 'उत्तर उपलब्ध नहीं है।')
             else:
                 bot_response_text = best_chunk.get('content_en', 'Answer not available.')
-            status_text = "answered"
+            status_text = "answered" if similarity_score >= CONFIDENCE_THRESHOLD else "low_confidence"
         else:
             bot_response_text = ("I'm sorry, I don't have a precise answer for that right now. "
                                  "Your query has been noted for review by our team.")
@@ -118,7 +131,8 @@ async def chat_with_bot(request: ChatRequest):
                 logger.error(f"Failed to send unanswered query email: {e}", exc_info=True)
 
     except Exception as e:
-        logger.error(f"Error processing chat query '{user_query_text}': {e}", exc_info=True)
+        import traceback
+        logger.error(f"Error processing chat query '{user_query_text}': {e}\n{traceback.format_exc()}")
         bot_response_text = "An internal error occurred while processing your request. Please try again."
         status_text = "error"
 

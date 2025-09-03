@@ -43,5 +43,4 @@ def generate_embedding(text: str) -> list:
         logger.error(f"Error generating embedding: {e}", exc_info=True)
         raise
 
-# Load model on import or call explicitly once on app startup
-load_nlp_model("paraphrase-multilingual-MiniLM-L12-v2")
+## Model should only be loaded once at FastAPI startup, not at import

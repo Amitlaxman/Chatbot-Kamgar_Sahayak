@@ -16,25 +16,21 @@ const Login = () => {
     }
 
     try {
-     const res = await fetch(`${BACKEND_URL}/login_api/login`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ email, password })
-});
-
-
+      const res = await fetch(`${BACKEND_URL}/login_api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.detail || "लॉगिन विफल");
       }
-
       const data = await res.json();
       console.log("Login Response:", data);
-
       alert("लॉगिन सफल");
       localStorage.setItem("isUserLoggedIn", "true");
-      localStorage.setItem("user", JSON.stringify({ email }));
-
+      localStorage.setItem("userToken", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       navigate('/'); // go to home page or dashboard after login
     } catch (err) {
       console.error(err);

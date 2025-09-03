@@ -1,24 +1,64 @@
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr
-from backend.db.mongo_utils import get_user_by_email
-
-
-import bcrypt
+from backend.db.mongo_utils import get_user_by_email, create_user
+from passlib.context import CryptContext
+import jwt
+import os
+from datetime import datetime, timedelta
 
 router = APIRouter()
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-please-change-this-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class LoginData(BaseModel):
     email: EmailStr
     password: str
+
+class RegisterData(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    address: str = ""
+    workType: str = ""
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 @router.post("/login")
 async def login_user(data: LoginData):
     user = await get_user_by_email(data.email)
     if not user:
         raise HTTPException(status_code=400, detail="User not found")
-    
-    if not bcrypt.checkpw(data.password.encode('utf-8'), user["password"].encode('utf-8')):
+    if not verify_password(data.password, user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid password")
-    
-    # For now, return a fake token
-    return {"message": "Login successful", "token": "dummy-token", "user": {"name": user["name"], "email": user["email"]}}
+    access_token = create_access_token({"sub": user["email"], "role": "user"})
+    return {"message": "Login successful", "token": access_token, "user": {"name": user["name"], "email": user["email"]}}
+
+@router.post("/register-user")
+async def register_user(data: RegisterData):
+    existing_user = await get_user_by_email(data.email)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    hashed_password = get_password_hash(data.password)
+    user_data = {
+        "name": data.name,
+        "email": data.email,
+        "hashed_password": hashed_password,
+        "address": data.address,
+        "workType": data.workType
+    }
+    await create_user(user_data)
+    return {"message": "User registered successfully"}
