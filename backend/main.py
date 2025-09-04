@@ -24,10 +24,11 @@ from backend.nlp.model_loader import load_nlp_model
 # --- Load Environment Variables ---
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://Elixir:elixir@clutter.3ary0d9.mongodb.net/chatbot_db?retryWrites=true&w=majority")
-DB_NAME = os.getenv("DB_NAME", "legal_db")
+MONGO_URI = os.getenv("MONGO_URI")
+LEGAL_DB = os.getenv("LEGAL_DB", "legal_db")
+CHATBOT_DB = os.getenv("CHATBOT_DB", "chatbot_db")
+ADMIN_DB = os.getenv("ADMIN_DB", "admin_db")
 NLP_MODEL_NAME = os.getenv("NLP_MODEL_NAME", "paraphrase-multilingual-MiniLM-L12-v2")
-ADMIN_DB_NAME = os.getenv("ADMIN_DB_NAME", "admin_db")
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-please-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -76,7 +77,7 @@ async def lifespan(app: FastAPI):
     # --- Startup Logic ---
     try:
         logger.info("Starting backend services...")
-        await connect_to_mongo(MONGO_URI, DB_NAME, ADMIN_DB_NAME)
+        await connect_to_mongo(MONGO_URI, LEGAL_DB)
         logger.info("MongoDB connected.")
         load_nlp_model(NLP_MODEL_NAME)
         logger.info("NLP model loaded.")

@@ -1,4 +1,3 @@
-
 from typing import List, Dict, Any
 import os
 import json
@@ -6,95 +5,136 @@ import logging
 from backend.nlp.similarity import get_embedding, cosine_similarity
 from backend.db.mongo_utils import get_mongo_db
 
-
-
 def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    """
+    Retrieves the most relevant documents from all content collections in MongoDB.
+    """
     logger = logging.getLogger(__name__)
     try:
         db = get_mongo_db()
-        # Search all collections except system collections
-        collection_names = [c for c in db.list_collection_names() if not c.startswith('system.')]
-        if not collection_names:
-            logger.warning("No collections found in database.")
-            return []
         
-        logger.info(f"Searching collections: {', '.join(collection_names)}")
+        # 1. Get all collection names and filter out system/non-content collections.
+        all_db_collections = db.list_collection_names()
+        
+        # Define all system and utility collections to exclude
+        exclude_collections = {
+            'logs', 'users', 'admin_marking', 'admin_answers', 'keywords',
+            'fs.files', 'fs.chunks', 'admin_users', 'system.views',
+            'system.version', 'system.profile'
+        }
+        
+        content_collections = [
+            name for name in all_db_collections 
+            if (not name.startswith('system.') 
+                and not name.startswith('_') 
+                and name not in exclude_collections)
+        ]
+        
+        logger.debug(f"All collections in DB: {all_db_collections}")
+        logger.debug(f"Excluded collections: {exclude_collections}")
+        logger.info(f"Content collections found: {content_collections}")
+        
+        if not content_collections:
+            logger.warning("No content collections found in the database to search.")
+            return []
+
+        logger.info("Searching in collections: %s", ", ".join(content_collections))
+
+        # 2. Fetch all chunks from all content collections.
         all_chunks = []
-        chunks_by_collection = {}
-        for cname in collection_names:
-            collection = db[cname]
-            chunks = list(collection.find({}, {"_id": 0}))
-            chunks_by_collection[cname] = len(chunks)
+        for collection_name in content_collections:
+            collection = db[collection_name]
+            chunks = list(collection.find({}, {"_id": 1, "content_en": 1, "content_hi": 1, "embedding_en": 1, "embedding_hi": 1, "source": 1}))
+            for chunk in chunks:
+                chunk["_collection"] = collection_name  # Tag chunk with its source collection
             all_chunks.extend(chunks)
-        logger.info(f"Collection sizes: {', '.join(f'{c}: {n}' for c,n in chunks_by_collection.items())}")
         
         if not all_chunks:
-            logger.warning("No chunks found in any collection.")
+            logger.warning("No documents (chunks) found in any of the content collections.")
             return []
 
-        # Detect language: if query has Devanagari, use Hindi embedding, else English
+        # 3. Determine query language and select appropriate embedding field.
         import re
-        if re.search(r'[\u0900-\u097F]', query):
-            emb_field = 'embedding_hi'
-            content_field = 'content_hi'
-            logger.info("Detected Hindi query, using Hindi embeddings")
-        else:
-            emb_field = 'embedding_en'
-            content_field = 'content_en'
-            logger.info("Using English embeddings")
+        is_hindi = re.search(r"[\u0900-\u097F]", query)
+        emb_field = "embedding_hi" if is_hindi else "embedding_en"
+        content_field = "content_hi" if is_hindi else "content_en"
+        logger.info(f"Query language detected as {'Hindi' if is_hindi else 'English'}. Using '{emb_field}'.")
 
+        # 4. Get embedding for the user's query.
         query_emb = get_embedding(query)
-        logger.info(f"Query embedding length: {len(query_emb) if hasattr(query_emb,'__len__') else 'unknown'}; using emb_field='{emb_field}'")
 
-        scored = []
-        missing_emb_count = 0
-        has_content_count = 0
-        for idx, chunk in enumerate(all_chunks):
-            if chunk.get(content_field):
-                has_content_count += 1
-            
+        # 5. Score each chunk based on cosine similarity.
+        scored_chunks = []
+        for chunk in all_chunks:
             chunk_emb = chunk.get(emb_field)
+            
+            # If embedding is missing, generate and store it on-the-fly.
             if not chunk_emb:
-                missing_emb_count += 1
-                text = chunk.get(content_field, '') or chunk.get('source', '')
-                if text:
+                content = chunk.get(content_field) or chunk.get("content_en") or ""
+                if content:
                     try:
-                        chunk_emb = get_embedding(text)  # compute on-the-fly
+                        logger.warning(f"Embedding missing for chunk from '{chunk.get('source')}'. Generating on-the-fly.")
+                        chunk_emb = get_embedding(content)
+                        db[chunk["_collection"]].update_one(
+                            {"_id": chunk["_id"]},
+                            {"$set": {emb_field: chunk_emb.tolist()}}
+                        )
                     except Exception as e:
-                        logger.warning(f"Failed to compute embedding for chunk {idx} ({chunk.get('source')}): {e}")
+                        logger.error(f"Could not generate on-the-fly embedding for chunk {chunk.get('_id')}: {e}")
                         continue
                 else:
-                    logger.debug(f"Skipping chunk {idx} - no content to embed")
                     continue
-            
+
             try:
                 sim = cosine_similarity(query_emb, chunk_emb)
-                scored.append((sim, chunk))
+                scored_chunks.append((sim, chunk))
             except Exception as e:
-                logger.warning(f"Similarity failed for chunk {idx} ({chunk.get('source')}): {e}")
+                logger.warning(f"Could not calculate similarity for chunk {chunk.get('_id')}: {e}")
 
-        logger.info(f"Processing stats: {len(all_chunks)} total chunks, {has_content_count} have {content_field}, {missing_emb_count} missing {emb_field}")
-
-        if not scored:
-            logger.info("No chunks scored successfully.")
+        if not scored_chunks:
+            logger.info("No chunks were scored successfully.")
             return []
 
-        scored.sort(reverse=True, key=lambda x: x[0])
-        top_scores = [(float(s), c.get('source', '')) for s, c in scored[:top_k]]
-        logger.info(f"Top {len(top_scores)} matches: " + '; '.join(f"{score:.3f} -> {source}" for score,source in top_scores))
+        # 6. Sort chunks by score and return the top_k results.
+        scored_chunks.sort(reverse=True, key=lambda x: x[0])
         
-        return [chunk for sim, chunk in scored[:top_k]]
+        top_results = []
+        for sim, chunk in scored_chunks[:top_k]:
+            result = {
+                "score": sim,
+                "source": chunk.get("source"),
+                "content_en": chunk.get("content_en"),
+                "content_hi": chunk.get("content_hi"),
+                "_collection": chunk.get("_collection")
+            }
+            top_results.append(result)
+
+        logger.info("Top %d matches: %s", len(top_results), "; ".join(f"{res['score']:.3f} -> {res['source']}" for res in top_results))
+        
+        # Return the full chunk data for the top results
+        return [chunk for sim, chunk in scored_chunks[:top_k]]
     except Exception as e:
         logger.error(f"Error in retrieve_relevant_faqs: {e}", exc_info=True)
         return []
 
-
 def format_context_for_generation(faqs: List[Dict[str, Any]], language: str = 'en') -> str:
-
     lines = []
     for i, chunk in enumerate(faqs, 1):
-        text = chunk.get('content_hi', '') if language == 'hi' else chunk.get('content_en', '')
-        if not text:
-            text = chunk.get('source', '') or str(chunk)
-        lines.append(f"Chunk {i} (Topic: {chunk.get('topic','')}):\n{text}\n")
-    return '\n'.join(lines)
+        # Try to get content in the requested language, fallback to other language if needed
+        text = (
+            chunk.get(f'content_{language}') or
+            chunk.get('content_en' if language == 'hi' else 'content_hi') or
+            chunk.get('content') or
+            chunk.get('text') or
+            chunk.get('source', '') or
+            str(chunk)
+        ).strip()
+        
+        # Try to get topic from collection name if not in chunk
+        topic = chunk.get('topic', '')
+        if not topic and '_collection' in chunk:
+            topic = chunk['_collection'].replace('_', ' ').title()
+        
+        lines.append(f"Chunk {i} (Topic: {topic}):\n{text}\n")
+    
+    return "\n".join(lines)
