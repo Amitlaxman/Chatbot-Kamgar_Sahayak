@@ -23,6 +23,19 @@ def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
             'system.version', 'system.profile'
         }
         
+        # Identify relevant collections based on query content
+        query_lower = query.lower()
+        query_terms = set(query_lower.split())
+        
+        def get_collection_relevance(collection_name: str) -> float:
+            name_lower = collection_name.lower()
+            # Split on both underscores and spaces for better matching
+            name_terms = set(name_lower.replace('_', ' ').split())
+            # Calculate term overlap between query and collection name
+            matching_terms = query_terms.intersection(name_terms)
+            return len(matching_terms) / len(query_terms) if query_terms else 0
+        
+        # Filter content collections
         content_collections = [
             name for name in all_db_collections 
             if (not name.startswith('system.') 
@@ -30,9 +43,12 @@ def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
                 and name not in exclude_collections)
         ]
         
+        # Sort collections by relevance to query
+        content_collections.sort(key=get_collection_relevance, reverse=True)
+        
         logger.debug(f"All collections in DB: {all_db_collections}")
         logger.debug(f"Excluded collections: {exclude_collections}")
-        logger.info(f"Content collections found: {content_collections}")
+        logger.info(f"Content collections found (sorted by relevance): {content_collections}")
         
         if not content_collections:
             logger.warning("No content collections found in the database to search.")
@@ -95,13 +111,21 @@ def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
             logger.info("No chunks were scored successfully.")
             return []
 
-        # 6. Sort chunks by score and return the top_k results.
-        scored_chunks.sort(reverse=True, key=lambda x: x[0])
+        # 6. Sort chunks by combined score (similarity and collection relevance)
+        for sim, chunk in scored_chunks:
+            # Combine semantic similarity with collection relevance
+            combined_score = (sim * 0.7) + (chunk.get("_collection_relevance", 0) * 0.3)
+            chunk["_combined_score"] = combined_score
+        
+        # Sort by combined score
+        scored_chunks.sort(reverse=True, key=lambda x: x[1].get("_combined_score", x[0]))
         
         top_results = []
         for sim, chunk in scored_chunks[:top_k]:
             result = {
-                "score": sim,
+                "score": chunk.get("_combined_score", sim),
+                "semantic_score": sim,
+                "collection_relevance": chunk.get("_collection_relevance", 0),
                 "source": chunk.get("source"),
                 "content_en": chunk.get("content_en"),
                 "content_hi": chunk.get("content_hi"),
@@ -109,9 +133,11 @@ def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
             }
             top_results.append(result)
 
-        logger.info("Top %d matches: %s", len(top_results), "; ".join(f"{res['score']:.3f} -> {res['source']}" for res in top_results))
+        logger.info("Top %d matches: %s", len(top_results), 
+                   "; ".join(f"Score: {res['score']:.3f} (Sem: {res['semantic_score']:.3f}, Rel: {res['collection_relevance']:.3f}) -> {res['source']}" 
+                            for res in top_results))
         
-        # Return the full chunk data for the top results
+        # Return the full chunk data for the top results, sorted by combined score
         return [chunk for sim, chunk in scored_chunks[:top_k]]
     except Exception as e:
         logger.error(f"Error in retrieve_relevant_faqs: {e}", exc_info=True)
