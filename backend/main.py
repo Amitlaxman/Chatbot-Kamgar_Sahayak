@@ -1,5 +1,3 @@
-
-
 # --- Imports ---
 import os
 import logging
@@ -18,16 +16,14 @@ from fastapi.security import OAuth2PasswordBearer
 from backend.routes import chat_routes, admin_routes, register_routes, otp_routes
 from backend.routes.login import router as login_router
 from backend.apk_router import router as apk_router
-from backend.db.mongo_utils import connect_to_mongo, close_mongo_connection, get_admin_user
+from backend.db.mongo_utils import connect_to_mongo, client
 from backend.nlp.model_loader import load_nlp_model
+from backend.db.mongo_utils import get_admin_user # <-- NEW: Import get_admin_user from where it's defined
 
 # --- Load Environment Variables ---
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI")
-LEGAL_DB = os.getenv("LEGAL_DB", "legal_db")
-CHATBOT_DB = os.getenv("CHATBOT_DB", "chatbot_db")
-ADMIN_DB = os.getenv("ADMIN_DB", "admin_db")
 NLP_MODEL_NAME = os.getenv("NLP_MODEL_NAME", "paraphrase-multilingual-MiniLM-L12-v2")
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-please-change-this-in-production")
 ALGORITHM = "HS256"
@@ -64,7 +60,8 @@ async def get_current_admin_user(token: str = Depends(oauth2_scheme)) -> dict:
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-        user = await get_admin_user(username)
+        # Assuming get_admin_user retrieves the admin user by email
+        user = await get_admin_user(username) 
         if user is None:
             raise credentials_exception
         return user
@@ -77,19 +74,22 @@ async def lifespan(app: FastAPI):
     # --- Startup Logic ---
     try:
         logger.info("Starting backend services...")
-        await connect_to_mongo(MONGO_URI, LEGAL_DB)
+        # connect_to_mongo now handles all database connections internally
+        await connect_to_mongo(MONGO_URI)
         logger.info("MongoDB connected.")
         load_nlp_model(NLP_MODEL_NAME)
         logger.info("NLP model loaded.")
     except Exception as e:
         logger.error(f"Startup failed: {str(e)}", exc_info=True)
+        # It's better to raise an exception for a hard failure
         raise HTTPException(status_code=500, detail="Backend failed to start")
 
     yield
 
     # --- Shutdown Logic ---
     logger.info("Shutting down backend...")
-    await close_mongo_connection()
+    if client: # use the global client variable directly
+        client.close()
     logger.info("MongoDB connection closed.")
 
 # --- FastAPI App ---
@@ -112,7 +112,6 @@ app.add_middleware(
 )
 
 # --- Routers ---
-
 app.include_router(chat_routes.router, prefix="/chat_api", tags=["Chatbot"])
 app.include_router(admin_routes.router, prefix="/admin_api", tags=["Admin"])
 app.include_router(register_routes.router, prefix="/register_api", tags=["Register"])

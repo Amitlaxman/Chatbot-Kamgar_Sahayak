@@ -5,13 +5,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Function to get the NLP model (will be loaded via model_loader.py)
-from backend.nlp.model_loader import get_model
+from backend.nlp.model_loader import get_embedding_model
+
 
 def get_embedding(text: str) -> List[float]:
     try:
-        model = get_model()
-        # Ensure the model is loaded before encoding
+        model = get_embedding_model()
+        return model.encode(text).tolist()
         if model is None:
             raise RuntimeError("NLP model is not loaded. Cannot generate embeddings.")
         embedding = model.encode(text, convert_to_tensor=False).tolist()
@@ -24,12 +24,18 @@ def get_embedding(text: str) -> List[float]:
         raise
 
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
-    ''' Calculates the cosine similarity between two vectors.'''
-    if not vec1 or not vec2:
-        return 0.0 # Handle empty vectors gracefully
-    
-    # Convert lists to numpy arrays for efficient dot product and norm
-    # (assuming numpy is installed as a dependency of sentence_transformers/scipy)
+    """
+    Calculate the cosine similarity between two vectors.
+    """
+    # The rest of this function is fine as it doesn't call get_model()
+    from numpy import dot
+    from numpy.linalg import norm
+    a = dot(vec1, vec2)
+    b = norm(vec1) * norm(vec2)
+    if b == 0:
+        return 0.0
+    return a / b
+
     try:
         import numpy as np
         vec1_np = np.array(vec1)

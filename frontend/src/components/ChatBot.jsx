@@ -91,6 +91,14 @@ const ChatBot = ({ language = 'hi' }) => {
     }
   };
 
+  // Function to speak text aloud
+  const speakText = (text, lang) => {
+    if (!window.speechSynthesis) return;
+    const utter = new window.SpeechSynthesisUtterance(text);
+    utter.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
+    window.speechSynthesis.speak(utter);
+  };
+
   return (
     <div className="chat-container">
       <h2>{language === 'hi' ? 'MP Labour Chatbot' : 'MP Labour Chatbot'}</h2>
@@ -112,6 +120,27 @@ const ChatBot = ({ language = 'hi' }) => {
             }}>
               {renderMessageText(msg.text)}
             </div>
+            {/* Speaker button for bot messages only */}
+            {msg.sender === 'bot' && msg.text && (
+              <button
+                onClick={() => speakText(msg.text, language)}
+                title={language === 'hi' ? 'उत्तर पढ़ें' : 'Read answer aloud'}
+                style={{
+                  marginTop: 4,
+                  marginLeft: 4,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  verticalAlign: 'middle',
+                  padding: 0
+                }}
+              >
+                {/* Speaker SVG icon */}
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style={{ verticalAlign: 'middle' }}>
+                  <path d="M3 8v4h4l5 5V3L7 8H3zm13.5 2a5.5 5.5 0 0 0-1.5-3.9v7.8A5.5 5.5 0 0 0 16.5 10zm-2-7.7v2.06A7.5 7.5 0 0 1 18 10a7.5 7.5 0 0 1-3.5 6.64v2.06A9.5 9.5 0 0 0 20 10a9.5 9.5 0 0 0-5.5-8.7z" />
+                </svg>
+              </button>
+            )}
           </div>
         ))}
         {loading && (

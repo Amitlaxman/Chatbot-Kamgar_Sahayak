@@ -1,6 +1,8 @@
 import logging
 import os
+from datetime import datetime
 from typing import List, Dict, Any, Optional
+from bson import ObjectId
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import ConnectionFailure
 from passlib.context import CryptContext
@@ -12,14 +14,16 @@ logger = logging.getLogger(__name__)
 
 # MongoDB client and database instances
 client: Optional[MongoClient] = None
-legal_db = None  # For RAG content
-chatbot_db = None  # For users, logs, keywords
-admin_db = None  # For admin users
+legal_db = None     # For RAG content/chunks
+chatbot_db = None   # For users, logs, keywords
+admin_db = None     # For admin users, markings, answers
 
 # Collection names from environment variables
 LOGS_COLLECTION = os.getenv('LOGS_COLLECTION', 'logs')
 KEYWORDS_COLLECTION = os.getenv('KEYWORDS_COLLECTION', 'keywords')
 ADMIN_USERS_COLLECTION = os.getenv('ADMIN_USERS_COLLECTION', 'admin_users')
+ADMIN_MARKINGS_COLLECTION = 'admin_markings'
+ADMIN_ANSWERS_COLLECTION = 'admin_answers'
 
 async def connect_to_mongo(mongo_uri: str) -> None:
     """Initialize MongoDB connections for both legal and chatbot databases."""
@@ -32,13 +36,14 @@ async def connect_to_mongo(mongo_uri: str) -> None:
         # Initialize separate databases
         legal_db = client['legal_db']
         chatbot_db = client['chatbot_db']
-        admin_db = client['admin_db']
+        admin_db = client['admin_db'] # <--- NEW LINE ADDED HERE
+        
         # Drop existing indexes in chatbot_db to avoid conflicts
         try:
             chatbot_db.users.drop_indexes()
             chatbot_db[KEYWORDS_COLLECTION].drop_indexes()
             chatbot_db[LOGS_COLLECTION].drop_indexes()
-            admin_db[ADMIN_USERS_COLLECTION].drop_indexes()
+            chatbot_db[ADMIN_USERS_COLLECTION].drop_indexes()
             logger.info("Dropped existing indexes in chatbot_db")
         except Exception as e:
             logger.warning(f"Error dropping indexes: {e}")
@@ -52,7 +57,7 @@ async def connect_to_mongo(mongo_uri: str) -> None:
         except Exception as e:
             logger.warning(f"Error cleaning up null values: {e}")
 
-        # Create new indexes with explicit names in chatbot_db ie user formation (^^ゞ
+        # Create new indexes with explicit names in chatbot_db
         chatbot_db.users.create_index(
             [("email", ASCENDING)],
             unique=True,
@@ -89,26 +94,31 @@ async def connect_to_mongo(mongo_uri: str) -> None:
         raise
 
 def get_legal_db():
+    """Get the legal content database connection."""
     if legal_db is None:
         raise ConnectionFailure("Legal database connection not established")
     return legal_db
 
 def get_chatbot_db():
+    """Get the chatbot database connection."""
     if chatbot_db is None:
         raise ConnectionFailure("Chatbot database connection not established")
     return chatbot_db
 
+# <--- THE MISSING FUNCTION DEFINITION IS ADDED HERE
 def get_admin_db():
+    """Get the admin database connection."""
     if admin_db is None:
         raise ConnectionFailure("Admin database connection not established")
     return admin_db
+# ---> END OF ADDED CODE
 
 def get_all_faqs() -> List[Dict[str, Any]]:
     """Get all FAQ documents from the legal database."""
     db = get_legal_db()
     # Get all collections except system collections
     collections = [c for c in db.list_collection_names() 
-                  if not c.startswith('system.')]
+                   if not c.startswith('system.')]
     
     results = []
     for cname in collections:

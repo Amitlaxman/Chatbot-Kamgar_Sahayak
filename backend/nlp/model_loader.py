@@ -1,46 +1,37 @@
-from sentence_transformers import SentenceTransformer
 import logging
+from sentence_transformers import SentenceTransformer
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Global model instance
-model: Optional[SentenceTransformer] = None
+# Global variable to hold the loaded model
+_embedding_model: Optional[SentenceTransformer] = None
 
-def load_nlp_model(model_name: str) -> None:
+def load_nlp_model(model_name: str):
     """
-    Loads the sentence transformer model for generating embeddings.
-    Args:
-        model_name: Name of the model to load (e.g., 'paraphrase-multilingual-MiniLM-L12-v2')
+    Loads the NLP model into memory and stores it in a global variable.
     """
-    global model
+    global _embedding_model
+    if _embedding_model is not None:
+        logger.info("NLP model is already loaded.")
+        return
+
     try:
         logger.info(f"Loading NLP model: {model_name}")
-        model = SentenceTransformer(model_name)
-        logger.info("NLP model loaded successfully")
+        _embedding_model = SentenceTransformer(model_name)
+        logger.info("NLP model loaded successfully.")
     except Exception as e:
-        logger.error(f"Error loading NLP model: {e}", exc_info=True)
+        logger.error(f"Failed to load NLP model: {e}", exc_info=True)
+        _embedding_model = None
         raise
 
-def get_model() -> Optional[SentenceTransformer]:
-    """Returns the loaded model instance."""
-    return model
-
-def generate_embedding(text: str) -> list:
+def get_embedding_model() -> SentenceTransformer:
     """
-    Generates embedding for the given text using the loaded model.
-    Args:
-        text: Input text to generate embedding for
-    Returns:
-        List of floats representing the text embedding
+    Returns the pre-loaded NLP model.
+    Raises an error if the model has not been loaded.
     """
-    if not model:
-        raise RuntimeError("NLP model not loaded")
-    try:
-        embedding = model.encode(text, convert_to_tensor=False)
-        return embedding.tolist()
-    except Exception as e:
-        logger.error(f"Error generating embedding: {e}", exc_info=True)
-        raise
-
-## Model should only be loaded once at FastAPI startup, not at import
+    global _embedding_model
+    if _embedding_model is None:
+        logger.error("Attempted to get embedding model before it was loaded.")
+        raise RuntimeError("NLP model is not loaded. Please ensure startup has completed.")
+    return _embedding_model

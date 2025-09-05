@@ -3,7 +3,7 @@ import os
 import json
 import logging
 from backend.nlp.similarity import get_embedding, cosine_similarity
-from backend.db.mongo_utils import get_mongo_db
+from backend.db.mongo_utils import get_legal_db 
 
 def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
     """
@@ -11,7 +11,7 @@ def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
     """
     logger = logging.getLogger(__name__)
     try:
-        db = get_mongo_db()
+        db = get_legal_db() 
         
         # 1. Get all collection names and filter out system/non-content collections.
         all_db_collections = db.list_collection_names()
