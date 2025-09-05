@@ -93,9 +93,20 @@ const ChatBot = ({ language = 'hi' }) => {
 
   // Function to speak text aloud
   const speakText = (text, lang) => {
-    if (!window.speechSynthesis) return;
+    if (!('speechSynthesis' in window)) {
+      alert('Text-to-speech is not supported in this browser.');
+      return;
+    }
+    // Stop any current speech
+    window.speechSynthesis.cancel();
     const utter = new window.SpeechSynthesisUtterance(text);
     utter.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
+    // Optional: set voice to match lang if available
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+      const match = voices.find(v => v.lang === utter.lang);
+      if (match) utter.voice = match;
+    }
     window.speechSynthesis.speak(utter);
   };
 
@@ -105,41 +116,45 @@ const ChatBot = ({ language = 'hi' }) => {
 
       <div className="chat-box" ref={boxRef} style={{ maxHeight: '60vh', overflowY: 'auto', padding: '12px', background: '#f8f8f8', borderRadius: 8 }}>
         {messages.map((msg, i) => (
-          <div key={i} className={`message ${msg.sender}`} style={{
-            display: 'block',
-            margin: '8px 0',
-            textAlign: msg.sender === 'user' ? 'right' : 'left'
-          }}>
-            <div style={{
-              display: 'inline-block',
-              padding: '8px 12px',
-              borderRadius: 12,
-              background: msg.sender === 'user' ? '#d1e7ff' : '#ffffff',
-              boxShadow: msg.sender === 'bot' ? '0 1px 1px rgba(0,0,0,0.05)' : 'none',
-              maxWidth: '85%'
+          <div key={i}>
+            <div className={`message ${msg.sender}`} style={{
+              display: 'block',
+              margin: '8px 0',
+              textAlign: msg.sender === 'user' ? 'right' : 'left'
             }}>
-              {renderMessageText(msg.text)}
+              <div style={{
+                display: 'inline-block',
+                padding: '8px 12px',
+                borderRadius: 12,
+                background: msg.sender === 'user' ? 'rgba(255, 165, 0, 0.7)' : 'rgba(135, 206, 250, 0.7)',
+                color: '#111',
+                boxShadow: msg.sender === 'bot' ? '0 1px 1px rgba(0,0,0,0.05)' : 'none',
+                maxWidth: '85%'
+              }}>
+                {renderMessageText(msg.text)}
+              </div>
             </div>
-            {/* Speaker button for bot messages only */}
+            {/* Speaker button directly below every bot answer */}
             {msg.sender === 'bot' && msg.text && (
-              <button
-                onClick={() => speakText(msg.text, language)}
-                title={language === 'hi' ? 'उत्तर पढ़ें' : 'Read answer aloud'}
-                style={{
-                  marginTop: 4,
-                  marginLeft: 4,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  verticalAlign: 'middle',
-                  padding: 0
-                }}
-              >
-                {/* Speaker SVG icon */}
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style={{ verticalAlign: 'middle' }}>
-                  <path d="M3 8v4h4l5 5V3L7 8H3zm13.5 2a5.5 5.5 0 0 0-1.5-3.9v7.8A5.5 5.5 0 0 0 16.5 10zm-2-7.7v2.06A7.5 7.5 0 0 1 18 10a7.5 7.5 0 0 1-3.5 6.64v2.06A9.5 9.5 0 0 0 20 10a9.5 9.5 0 0 0-5.5-8.7z" />
-                </svg>
-              </button>
+              <div style={{ textAlign: 'left', marginBottom: 4 }}>
+                <button
+                  onClick={() => speakText(msg.text, language)}
+                  title={language === 'hi' ? 'उत्तर पढ़ें' : 'Read answer aloud'}
+                  style={{
+                    marginTop: 2,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    verticalAlign: 'middle',
+                    padding: 0
+                  }}
+                >
+                  {/* Speaker SVG icon */}
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="orange" style={{ verticalAlign: 'middle' }}>
+                    <path d="M3 8v4h4l5 5V3L7 8H3zm13.5 2a5.5 5.5 0 0 0-1.5-3.9v7.8A5.5 5.5 0 0 0 16.5 10zm-2-7.7v2.06A7.5 7.5 0 0 1 18 10a7.5 7.5 0 0 1-3.5 6.64v2.06A9.5 9.5 0 0 0 20 10a9.5 9.5 0 0 0-5.5-8.7z" />
+                  </svg>
+                </button>
+              </div>
             )}
           </div>
         ))}
