@@ -12,13 +12,14 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# MongoDB client and database instances
+# ATLAS client and database instances o(≧∀≦)o  
 client: Optional[MongoClient] = None
-legal_db = None     # For RAG content/chunks
-chatbot_db = None   # For users, logs, keywords
-admin_db = None     # For admin users, markings, answers
+chatbot_db = None   # For users, logs, keywords (user base)
+admin_db = None     # For admin users, markings, answers (admin base)
+legal_db = None     # data base BWHAHAHA ^o^/
+links_db = None     # For reference links
 
-# Collection names from environment variables
+# .env refrence
 LOGS_COLLECTION = os.getenv('LOGS_COLLECTION', 'logs')
 KEYWORDS_COLLECTION = os.getenv('KEYWORDS_COLLECTION', 'keywords')
 ADMIN_USERS_COLLECTION = os.getenv('ADMIN_USERS_COLLECTION', 'admin_users')
@@ -26,18 +27,19 @@ ADMIN_MARKINGS_COLLECTION = 'admin_markings'
 ADMIN_ANSWERS_COLLECTION = 'admin_answers'
 
 async def connect_to_mongo(mongo_uri: str) -> None:
-    """Initialize MongoDB connections for both legal and chatbot databases."""
-    global client, legal_db, chatbot_db, admin_db
+    '''Initialize MongoDB connections <init>'''
+    global client, legal_db, chatbot_db, admin_db, links_db
     try:
         client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
-        # Test connection
+        # <Test> ¬_¬
         client.admin.command('ping')
-        
-        # Initialize separate databases
+
+        # Initialize separate databases for future databases catogaries extension.... ig
         legal_db = client['legal_db']
         chatbot_db = client['chatbot_db']
-        admin_db = client['admin_db'] # <--- NEW LINE ADDED HERE
-        
+        admin_db = client['admin_db']
+        links_db = client['links_db']
+
         # Drop existing indexes in chatbot_db to avoid conflicts
         try:
             chatbot_db.users.drop_indexes()
@@ -64,28 +66,28 @@ async def connect_to_mongo(mongo_uri: str) -> None:
             partialFilterExpression={"email": {"$type": "string"}},
             name="unique_email_users"
         )
-        
+
         chatbot_db[LOGS_COLLECTION].create_index(
             [("timestamp", ASCENDING)],
             name="timestamp_logs"
         )
-        
+
         chatbot_db[KEYWORDS_COLLECTION].create_index(
             [("keyword", ASCENDING)],
             unique=True,
             partialFilterExpression={"keyword": {"$type": "string"}},
             name="unique_keyword"
         )
-        
+
         chatbot_db[ADMIN_USERS_COLLECTION].create_index(
             [("email", ASCENDING)],
             unique=True,
             partialFilterExpression={"email": {"$type": "string"}},
             name="unique_email_admins"
         )
-        
-        logger.info("✅ Connected to MongoDB databases: legal_db (content) and chatbot_db (users/logs)")
-        
+
+        logger.info("✅ Connected to MongoDB databases: legal_db (content), chatbot_db (users/logs), links_db (reference links)")
+
     except ConnectionFailure as e:
         logger.error(f"❌ MongoDB connection failed: {e}")
         raise
@@ -94,27 +96,33 @@ async def connect_to_mongo(mongo_uri: str) -> None:
         raise
 
 def get_legal_db():
-    """Get the legal content database connection."""
+    '''Get the legal content database connection.'''
     if legal_db is None:
         raise ConnectionFailure("Legal database connection not established")
     return legal_db
 
 def get_chatbot_db():
-    """Get the chatbot database connection."""
+    '''Get the chatbot database connection.'''
     if chatbot_db is None:
         raise ConnectionFailure("Chatbot database connection not established")
     return chatbot_db
 
 # <--- THE MISSING FUNCTION DEFINITION IS ADDED HERE
 def get_admin_db():
-    """Get the admin database connection."""
+    '''Get the admin database connection.'''
     if admin_db is None:
         raise ConnectionFailure("Admin database connection not established")
     return admin_db
 # ---> END OF ADDED CODE
 
+def get_links_db():
+    '''Get the links database connection.'''
+    if links_db is None:
+        raise ConnectionFailure("Links database connection not established")
+    return links_db
+
 def get_all_faqs() -> List[Dict[str, Any]]:
-    """Get all FAQ documents from the legal database."""
+    '''Get all FAQ documents from the legal database.'''
     db = get_legal_db()
     # Get all collections except system collections
     collections = [c for c in db.list_collection_names() 
@@ -128,13 +136,13 @@ def get_all_faqs() -> List[Dict[str, Any]]:
     return results
 
 async def insert_log_entry(entry: Dict[str, Any]) -> str:
-    """Insert a log entry into the logs collection in chatbot_db."""
+    '''Insert a log entry into the logs collection in chatbot_db.'''
     result = get_chatbot_db()[LOGS_COLLECTION].insert_one(entry)
     logger.info(f"📝 Log entry inserted with ID: {result.inserted_id}")
     return str(result.inserted_id)
 
 def get_unanswered_logs() -> List[Dict[str, Any]]:
-    """Get all unanswered log entries from chatbot_db."""
+    '''Get all unanswered log entries from chatbot_db.'''
     logs = get_chatbot_db()[LOGS_COLLECTION].find({
         "$or": [
             {"answer": None},
@@ -146,12 +154,12 @@ def get_unanswered_logs() -> List[Dict[str, Any]]:
 
 
 def get_all_logs_entries() -> List[Dict[str, Any]]:
-    """Get all log entries."""
+    '''Get all log entries.'''
     logs = get_chatbot_db()[LOGS_COLLECTION].find({})
     return [{**log, "_id": str(log["_id"])} for log in logs]
 
 async def create_user(user_data: Dict[str, Any]) -> str:
-    """Create a new user in the database."""
+    '''Create a new user in the database.'''
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     mongodb = get_chatbot_db()
     users_collection = mongodb.users
@@ -171,11 +179,11 @@ async def create_user(user_data: Dict[str, Any]) -> str:
     return str(result.inserted_id)
 
 async def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
-    """Get user by email."""
+    '''Get user by email.'''
     return get_chatbot_db().users.find_one({"email": email})
 
 async def verify_user(email: str, password: str) -> bool:
-    """Verify user credentials."""
+    '''Verify user credentials.'''
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     user = await get_user_by_email(email)
     if not user:
@@ -183,16 +191,16 @@ async def verify_user(email: str, password: str) -> bool:
     return pwd_context.verify(password, user.get("hashed_password", ""))
 
 async def get_admin_user(email: str) -> Optional[Dict[str, Any]]:
-    """Get admin user by email."""
+    '''Get admin user by email.'''
     return get_admin_db()[ADMIN_USERS_COLLECTION].find_one({"email": email})
 
 async def create_admin_user(admin_data: Dict[str, Any]) -> str:
-    """Create a new admin user."""
+    '''Create a new admin user.'''
     result = get_admin_db()[ADMIN_USERS_COLLECTION].insert_one(admin_data)
     return str(result.inserted_id)
 
 async def insert_admin_marking(log_id: str, marking: Dict[str, Any]) -> bool:
-    """Insert admin marking for a log entry."""
+    '''Insert admin marking for a log entry.'''
     try:
         result = get_admin_db()[LOGS_COLLECTION].update_one(
             {"_id": log_id},
@@ -204,7 +212,7 @@ async def insert_admin_marking(log_id: str, marking: Dict[str, Any]) -> bool:
         return False
 
 async def insert_admin_answer(log_id: str, answer: str) -> bool:
-    """Insert admin answer for a log entry."""
+    '''Insert admin answer for a log entry.'''
     try:
         result = get_admin_db()[LOGS_COLLECTION].update_one(
             {"_id": log_id},

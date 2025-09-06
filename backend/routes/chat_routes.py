@@ -1,3 +1,4 @@
+from backend.utils.reference_links import get_collection_reference_link
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from backend.models.chat_model import ChatQuery, ChatResponse, LogEntry
@@ -62,11 +63,9 @@ class ChatRequest(BaseModel):
     chat_history: Optional[List[Dict[str, str]]] = None
 
 def generate_tts_audio(text: str, lang: str) -> Optional[str]:
-    '''Generates a Base64 encoded audio string from text using pyttsx3 (offline).'''
+    '''Generates a encoded audio string from text using pyttsx3.'''
     try:
         engine = pyttsx3.init()
-        # Set language/voice if needed (pyttsx3 uses system voices)
-        # For Hindi, you may need to set a Hindi voice if available
         voices = engine.getProperty('voices')
         if lang == 'hi':
             for voice in voices:
@@ -153,11 +152,17 @@ async def chat_with_bot(request: ChatRequest):
                 logger.info(f"Selected chunk with score {similarity_score}")
 
                 if best_chunk:
+                    ref_link = get_collection_reference_link(best_chunk.get('_collection', ''))
                     if language == 'hi':
-                        bot_response_text = best_chunk.get('content_hi') or best_chunk.get('content_en') or best_chunk.get('source', 'उत्तर उपलब्ध नहीं है।')
+                        link_label = 'संदर्भ के लिए लिंक'
+                        answer = best_chunk.get('content_hi') or best_chunk.get('content_en') or best_chunk.get('source', 'उत्तर उपलब्ध नहीं है।')
                     else:
-                        bot_response_text = best_chunk.get('content_en') or best_chunk.get('content_hi') or best_chunk.get('source', 'Answer not available.')
-                
+                        link_label = 'link for reference'
+                        answer = best_chunk.get('content_en') or best_chunk.get('content_hi') or best_chunk.get('source', 'Answer not available.')
+                    if ref_link:
+                        bot_response_text = f"{answer}\n{link_label}: {ref_link}"
+                    else:
+                        bot_response_text = answer
                 status_text = "answered" if similarity_score >= CONFIDENCE_THRESHOLD else "low_confidence"
             else:
                 bot_response_text = ('I am sorry, I could not find a relevant chunk. Your query has been logged for review.' if language != 'hi' else 'माफ़ कीजिए, मैं उपयुक्त जानकारी नहीं ढूँढ पाया। आपका प्रश्न समीक्षा के लिए लॉग कर दिया गया है।')
