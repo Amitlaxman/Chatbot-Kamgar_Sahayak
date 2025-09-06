@@ -8,3 +8,4 @@ scipy
 passlib[bcrypt]
 PyJWT
 email-validator
+gTTs
