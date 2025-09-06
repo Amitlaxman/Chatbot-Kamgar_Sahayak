@@ -91,23 +91,65 @@ const ChatBot = ({ language = 'hi' }) => {
     }
   };
 
-  // Function to speak text aloud
-  const speakText = (text, lang) => {
+  // TTS play/pause state per message
+  const [playingIdx, setPlayingIdx] = useState(null);
+  const [paused, setPaused] = useState(false);
+
+  // Function to play or pause TTS for a message
+  const handleTTS = (msgIdx, text, lang) => {
     if (!('speechSynthesis' in window)) {
       alert('Text-to-speech is not supported in this browser.');
       return;
     }
-    // Stop any current speech
+    // If this message is currently playing
+    if (playingIdx === msgIdx && !paused) {
+      window.speechSynthesis.pause();
+      setPaused(true);
+      return;
+    }
+    // If paused, resume
+    if (playingIdx === msgIdx && paused) {
+      window.speechSynthesis.resume();
+      setPaused(false);
+      return;
+    }
+    // Otherwise, start new speech
     window.speechSynthesis.cancel();
+    setPlayingIdx(msgIdx);
+    setPaused(false);
     const utter = new window.SpeechSynthesisUtterance(text);
     utter.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
-    // Optional: set voice to match lang if available
-    const voices = window.speechSynthesis.getVoices();
-    if (voices && voices.length > 0) {
-      const match = voices.find(v => v.lang === utter.lang);
+
+    // Wait for voices to be loaded if not already
+    const setVoiceAndSpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      let match = null;
+      if (lang === 'hi') {
+        // Try to find any Hindi-supporting voice
+        match = voices.find(v => (v.lang && v.lang.toLowerCase().startsWith('hi')) || (v.name && v.name.toLowerCase().includes('hindi')));
+        if (!match) {
+          alert('Hindi voice not available in your browser/system. Please install a Hindi voice or try a different browser.');
+        }
+      } else {
+        match = voices.find(v => v.lang === 'en-US');
+      }
       if (match) utter.voice = match;
+      utter.onend = () => {
+        setPlayingIdx(null);
+        setPaused(false);
+      };
+      utter.onerror = () => {
+        setPlayingIdx(null);
+        setPaused(false);
+      };
+      window.speechSynthesis.speak(utter);
+    };
+
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.onvoiceschanged = setVoiceAndSpeak;
+    } else {
+      setVoiceAndSpeak();
     }
-    window.speechSynthesis.speak(utter);
   };
 
   return (
@@ -134,12 +176,12 @@ const ChatBot = ({ language = 'hi' }) => {
                 {renderMessageText(msg.text)}
               </div>
             </div>
-            {/* Speaker button directly below every bot answer */}
+            {/* Speaker/pause button directly below every bot answer */}
             {msg.sender === 'bot' && msg.text && (
               <div style={{ textAlign: 'left', marginBottom: 4 }}>
                 <button
-                  onClick={() => speakText(msg.text, language)}
-                  title={language === 'hi' ? 'उत्तर पढ़ें' : 'Read answer aloud'}
+                  onClick={() => handleTTS(i, msg.text, language)}
+                  title={playingIdx === i && !paused ? (language === 'hi' ? 'रोकें' : 'Pause') : (language === 'hi' ? 'उत्तर पढ़ें' : 'Read answer aloud')}
                   style={{
                     marginTop: 2,
                     background: 'none',
@@ -149,8 +191,8 @@ const ChatBot = ({ language = 'hi' }) => {
                     padding: 0
                   }}
                 >
-                  {/* Speaker SVG icon */}
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="orange" style={{ verticalAlign: 'middle' }}>
+                  {/* Speaker SVG icon, green if ready/paused, orange if playing */}
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill={playingIdx === i && !paused ? 'orange' : 'green'} style={{ verticalAlign: 'middle' }}>
                     <path d="M3 8v4h4l5 5V3L7 8H3zm13.5 2a5.5 5.5 0 0 0-1.5-3.9v7.8A5.5 5.5 0 0 0 16.5 10zm-2-7.7v2.06A7.5 7.5 0 0 1 18 10a7.5 7.5 0 0 1-3.5 6.64v2.06A9.5 9.5 0 0 0 20 10a9.5 9.5 0 0 0-5.5-8.7z" />
                   </svg>
                 </button>
