@@ -2,26 +2,29 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ChatService {
-  // ⚠️ Use your LAN IP (not localhost), same as Node server
-  static const String chatUrl = "http://192.168.29.152:5000/api/chat";
+  // Use your ngrok public URL
+  static const String baseUrl = "http://192.168.29.152:8000";
 
   static Future<String> sendMessage(String userMessage) async {
+    final String chatUrl = "$baseUrl/chat";
+
     try {
       final res = await http.post(
         Uri.parse(chatUrl),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"message": userMessage}),
+        body: jsonEncode({"query": userMessage}),
       );
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        return data["reply"] ?? "";
+
+        // Always return only the "response" field as a String
+        return data["response"]?.toString() ?? "⚠️ No response from bot";
       } else {
-        throw Exception("Node backend error: ${res.statusCode} ${res.body}");
+        throw Exception("Backend error: ${res.statusCode} - ${res.body}");
       }
     } catch (e) {
-      // Show real error instead of generic
-      return "⚠️ Error: $e";
+      return "Error: $e";
     }
   }
 }

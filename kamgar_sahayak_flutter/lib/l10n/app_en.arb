@@ -43,7 +43,6 @@
   "errorSendingOtp": "Error sending OTP:",
   "pleaseSendOtpFirst": "Please send OTP first.",
   "otpVerificationFailed": "OTP verification failed",
-  "guestLogin": "Log in as Guest",
-  "guestLoginFailed": "Guest login failed"
+  "guestLogin": "Log in as Guest"
   
 }

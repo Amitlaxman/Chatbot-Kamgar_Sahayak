@@ -1,0 +1,14 @@
+# Main web framework
+fastapi
+uvicorn
+
+# LLM and RAG components
+langchain
+langchain-groq
+langchain-mongodb
+langchain-community
+sentence-transformers # For embedding model
+pymongo
+
+# Environment variables
+python-dotenv

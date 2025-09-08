@@ -340,12 +340,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log in as Guest'**
   String get guestLogin;
-
-  /// No description provided for @guestLoginFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Guest login failed'**
-  String get guestLoginFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

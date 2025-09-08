@@ -13,6 +13,7 @@ dependencies:
   url_launcher: ^6.2.6
   cached_network_image: ^3.3.0
   speech_to_text: ^6.6.0
+  flutter_tts: ^3.8.5 
 
   # UI & Fonts
   google_fonts: ^6.1.0
