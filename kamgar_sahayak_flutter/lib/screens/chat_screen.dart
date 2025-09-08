@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_tts/flutter_tts.dart'; // 👈 for TTS
 import '../chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -14,17 +15,24 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   bool _loading = false;
 
-  // Speech-to-text instance
   late stt.SpeechToText _speech;
   bool _isListening = false;
 
-  // Language toggle: 0 = English, 1 = Hindi
   int _selectedLang = 0;
+
+  // 👇 TTS instance
+  final FlutterTts _flutterTts = FlutterTts();
+  bool _isPlaying = false;
+  String _currentText = "";
 
   @override
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+
+    _flutterTts.setCompletionHandler(() {
+      setState(() => _isPlaying = false);
+    });
   }
 
   void _send() async {
@@ -44,21 +52,19 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-
   void _listen() async {
     if (!_isListening) {
       bool available = await _speech.initialize();
       if (available) {
         setState(() => _isListening = true);
 
-        // Set language based on toggle
         String locale = _selectedLang == 0 ? "en-US" : "hi-IN";
 
         _speech.listen(
           localeId: locale,
           onResult: (result) {
             setState(() {
-              _controller.text = result.recognizedWords; // fill text box
+              _controller.text = result.recognizedWords;
             });
           },
         );
@@ -69,18 +75,55 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // 🔊 Speak selected text
+  void _speak(String text) async {
+    await _flutterTts.stop();
+    setState(() {
+      _currentText = text;
+      _isPlaying = true;
+    });
+    await _flutterTts.speak(text);
+  }
+
+  // ⏸ Pause speaking
+  void _pause() async {
+    await _flutterTts.pause();
+    setState(() => _isPlaying = false);
+  }
+
   Widget _bubble(Map<String, String> msg) {
     bool isUser = msg["sender"] == "user";
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isUser ? Colors.blue[200] : Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(msg["text"] ?? ""),
+      child: Column(
+        crossAxisAlignment:
+            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isUser ? Colors.blue[200] : Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(msg["text"] ?? ""),
+          ),
+
+          // 🔘 TTS buttons only for bot messages
+          if (!isUser)
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.volume_up),
+                  onPressed: () => _speak(msg["text"] ?? ""),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.pause),
+                  onPressed: _pause,
+                ),
+              ],
+            )
+        ],
       ),
     );
   }
@@ -101,8 +144,6 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: EdgeInsets.all(8),
               child: Text("Typing..."),
             ),
-
-          // 🔥 Language toggle slider
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
@@ -129,7 +170,6 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-
           Row(
             children: [
               Expanded(
