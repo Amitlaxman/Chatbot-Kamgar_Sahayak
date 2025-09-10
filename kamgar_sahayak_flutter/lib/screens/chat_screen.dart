@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart'; // 👈 for TTS
 import '../chat_service.dart';
+import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -18,12 +20,15 @@ class _ChatScreenState extends State<ChatScreen> {
   late stt.SpeechToText _speech;
   bool _isListening = false;
 
-  int _selectedLang = 0;
+  int _selectedLang = 0; // 0 = English, 1 = Hindi
 
   // 👇 TTS instance
   final FlutterTts _flutterTts = FlutterTts();
   bool _isPlaying = false;
   String _currentText = "";
+
+  final Color _primaryBlue = const Color(0xFF1A3C5A);
+  final Color _accentOrange = Colors.orange;
 
   @override
   void initState() {
@@ -31,6 +36,14 @@ class _ChatScreenState extends State<ChatScreen> {
     _speech = stt.SpeechToText();
 
     _flutterTts.setCompletionHandler(() {
+      setState(() => _isPlaying = false);
+    });
+
+    _flutterTts.setStartHandler(() {
+      setState(() => _isPlaying = true);
+    });
+
+    _flutterTts.setPauseHandler(() {
       setState(() => _isPlaying = false);
     });
   }
@@ -78,6 +91,11 @@ class _ChatScreenState extends State<ChatScreen> {
   // 🔊 Speak selected text
   void _speak(String text) async {
     await _flutterTts.stop();
+
+    // 👇 Fix: Set voice language properly
+    String langCode = _selectedLang == 0 ? "en-US" : "hi-IN";
+    await _flutterTts.setLanguage(langCode);
+
     setState(() {
       _currentText = text;
       _isPlaying = true;
@@ -95,35 +113,49 @@ class _ChatScreenState extends State<ChatScreen> {
     bool isUser = msg["sender"] == "user";
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment:
-            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isUser ? Colors.blue[200] : Colors.grey[200],
-              borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isUser ? _accentOrange.withOpacity(0.8) : _primaryBlue.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableLinkify(
+              text: msg["text"] ?? "",
+              onOpen: (link) async {
+                if (!await launchUrl(Uri.parse(link.url),
+                    mode: LaunchMode.externalApplication)) {
+                  throw 'Could not launch ${link.url}';
+                }
+              },
+              style: TextStyle(
+                fontSize: 16,
+                color: isUser ? Colors.white : _primaryBlue,
+              ),
+              linkStyle: TextStyle(
+                color: _accentOrange,
+                decoration: TextDecoration.underline,
+              ),
             ),
-            child: Text(msg["text"] ?? ""),
-          ),
 
-          // 🔘 TTS buttons only for bot messages
-          if (!isUser)
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.volume_up),
-                  onPressed: () => _speak(msg["text"] ?? ""),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.pause),
-                  onPressed: _pause,
-                ),
-              ],
-            )
-        ],
+            if (!isUser)
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.volume_up, color: _primaryBlue),
+                    onPressed: () => _speak(msg["text"] ?? ""),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.pause, color: Colors.redAccent),
+                    onPressed: _pause,
+                  ),
+                ],
+              )
+          ],
+        ),
       ),
     );
   }
@@ -131,11 +163,17 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Kaamgar Sahayak Chatbot")),
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        backgroundColor: _primaryBlue,
+        foregroundColor: Colors.white,
+        title: const Text("Kaamgar Sahayak Chatbot", style: TextStyle(color: Colors.white)),
+      ),
       body: Column(
         children: [
           Expanded(
             child: ListView(
+              padding: const EdgeInsets.all(8),
               children: _messages.map(_bubble).toList(),
             ),
           ),
@@ -144,51 +182,66 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: EdgeInsets.all(8),
               child: Text("Typing..."),
             ),
+
+          // 🔘 Language Toggle
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text("Choose Speaking Language:"),
-                ToggleButtons(
-                  isSelected: [_selectedLang == 0, _selectedLang == 1],
-                  onPressed: (index) {
-                    setState(() {
-                      _selectedLang = index;
-                    });
-                  },
-                  children: const [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text("English"),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text("Hindi"),
-                    ),
-                  ],
+                ChoiceChip(
+                  label: const Text("English"),
+                  selected: _selectedLang == 0,
+                  onSelected: (_) => setState(() => _selectedLang = 0),
+                  selectedColor: _accentOrange,
+                  labelStyle: TextStyle(
+                    color: _selectedLang == 0 ? Colors.white : _primaryBlue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ChoiceChip(
+                  label: const Text("हिन्दी"),
+                  selected: _selectedLang == 1,
+                  onSelected: (_) => setState(() => _selectedLang = 1),
+                  selectedColor: _accentOrange,
+                  labelStyle: TextStyle(
+                    color: _selectedLang == 1 ? Colors.white : _primaryBlue,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: const InputDecoration(
-                      hintText: "Type or speak a message..."),
-                  onSubmitted: (_) => _send(),
+
+          // 📝 Input Row
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            color: Colors.white,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                        hintText: "Type or speak a message...",
+                        border: InputBorder.none),
+                    onSubmitted: (_) => _send(),
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: Icon(
-                  _isListening ? Icons.mic : Icons.mic_none,
-                  color: _isListening ? Colors.red : null,
+                IconButton(
+                  icon: Icon(
+                    _isListening ? Icons.mic : Icons.mic_none,
+                    color: _isListening ? Colors.red : _primaryBlue,
+                  ),
+                  onPressed: _listen,
                 ),
-                onPressed: _listen,
-              ),
-              IconButton(onPressed: _send, icon: const Icon(Icons.send)),
-            ],
+                IconButton(
+                  onPressed: _send,
+                  icon: Icon(Icons.send, color: _accentOrange),
+                ),
+              ],
+            ),
           ),
         ],
       ),

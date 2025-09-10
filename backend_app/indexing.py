@@ -14,7 +14,7 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = "legal_db"
 VECTOR_COLLECTION_NAME = "legal_vectors"
-LINKS_COLLECTION_NAME = "links" 
+LINKS_COLLECTION_NAME = "links"
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 
 def get_links_map(db_client):
@@ -23,11 +23,14 @@ def get_links_map(db_client):
     links_collection = db[LINKS_COLLECTION_NAME]
     links_map = {}
     for link_doc in links_collection.find():
-        collection_name = link_doc.get("collection_name")
-        link_url = link_doc.get("link")
+        # --- MODIFIED: Using your actual field names ---
+        collection_name = link_doc.get("collection")
+        link_url = link_doc.get("reference_link")
+        # --- END MODIFICATION ---
+        
         if collection_name and link_url:
             links_map[collection_name] = link_url
-    print(f"🔗 Loaded {len(links_map)} links from '{LINKS_COLLECTION_NAME}' collection.")
+    print(f"🔗 Loaded {len(links_map)} links. Verifying a sample: {list(links_map.items())[:2]}")
     return links_map
 
 def load_and_chunk_documents(db_client, text_splitter, links_map):
@@ -63,15 +66,10 @@ def load_and_chunk_documents(db_client, text_splitter, links_map):
             final_text = "\n\n---\n\n".join(combined_text)
 
             if final_text:
-                source_link = links_map.get(coll_name)
-                # Add a log to show when a link is found
-                if source_link:
-                    print(f"  -> Found and attached link for '{coll_name}'")
-
                 metadata = {
                     "source_collection": coll_name,
                     "original_id": str(doc.get("_id", "")),
-                    "source_link": source_link
+                    "source_link": links_map.get(coll_name)
                 }
                 
                 langchain_doc = Document(page_content=final_text, metadata=metadata)
@@ -83,7 +81,7 @@ def load_and_chunk_documents(db_client, text_splitter, links_map):
 
 def main():
     """Main function to run the indexing process."""
-    print("--- Starting the indexing process with link enrichment ---")
+    print("--- Starting the indexing process with correct link schema ---")
 
     try:
         client = MongoClient(MONGO_URI)
@@ -122,7 +120,7 @@ def main():
         collection=vector_collection,
         index_name="vector_index",
     )
-    print("✅ All documents have been successfully indexed.")
+    print("✅ All documents have been successfully indexed with correct links.")
     print("--- Indexing process complete! ---")
     client.close()
 

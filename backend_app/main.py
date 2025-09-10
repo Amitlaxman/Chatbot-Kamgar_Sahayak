@@ -28,8 +28,8 @@ RERANKER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 # --- FastAPI App Initialization ---
 app = FastAPI(
     title="Legal Chatbot Backend",
-    description="A chatbot API using a RAG pipeline with MongoDB, Groq, and Re-ranking.",
-    version="1.1.0",
+    description="A bilingual chatbot API for Madhya Pradesh labor laws.",
+    version="1.5.0", # Version updated for Hindi support
 )
 
 app.add_middleware(
@@ -46,10 +46,14 @@ class ChatRequest(BaseModel):
     query: str
     user_id: Optional[str] = None
 
+class Source(BaseModel):
+    source_collection: str
+    content_snippet: str
+    source_link: Optional[str] = None
 
 class ChatResponse(BaseModel):
     response: str
-    sources: List[Dict]
+    sources: List[Source]
 
 
 # --- Global Variables ---
@@ -79,7 +83,7 @@ def startup_event():
         vector_store = MongoDBAtlasVectorSearch(
             collection=collection,
             embedding=embeddings,
-            index_name="vector_index",  # <-- FIXED to use your index name
+            index_name="vector_index",
         )
         print("✅ MongoDB connection and vector store initialized.")
     except Exception as e:
@@ -103,19 +107,39 @@ def startup_event():
     print("--- Server startup complete. ---")
 
 
-# --- Helper Functions ---
+# --- Language Processing Helper Functions ---
+
+def detect_language(query: str, llm_instance: ChatGroq) -> str:
+    """Detects if the query is primarily English or Hindi."""
+    prompt = f"""
+    Detect the primary language of the following text.
+    Respond with only the two-letter language code (e.g., 'en' for English, 'hi' for Hindi/Hinglish).
+    Text: "{query}"
+    Language Code:
+    """
+    # MODIFIED: Access the .content attribute of the AIMessage object
+    response = llm_instance.invoke(prompt).content.strip().lower()
+    return "hi" if "hi" in response else "en"
+
+def translate_text(text: str, target_lang: str, llm_instance: ChatGroq) -> str:
+    """Translates text to the target language."""
+    if target_lang == "en":
+        prompt = f'Translate the following Hindi text to English:\n\nHindi: "{text}"\n\nEnglish:'
+    else: # target_lang == "hi"
+        prompt = f'Translate the following English text to Hindi:\n\nEnglish: "{text}"\n\nHindi:'
+    # MODIFIED: Access the .content attribute of the AIMessage object
+    return llm_instance.invoke(prompt).content.strip()
+
+
 def generate_hypothetical_document(query: str, llm_instance) -> str:
     """Generates a hypothetical document from a query for improved retrieval."""
     hyde_prompt_template = """
     Please write a short, one-paragraph document that answers the following user question.
     This document should be written as if it were an excerpt from a legal guide for workers in Madhya Pradesh.
     QUESTION: {question}
-
     DOCUMENT:
     """
-    hyde_prompt = PromptTemplate(
-        template=hyde_prompt_template, input_variables=["question"]
-    )
+    hyde_prompt = PromptTemplate(template=hyde_prompt_template, input_variables=["question"])
     hyde_chain = hyde_prompt | llm_instance | StrOutputParser()
     return hyde_chain.invoke({"question": query})
 
@@ -140,66 +164,78 @@ async def chat_handler(request: ChatRequest):
     if not retriever or not llm:
         raise HTTPException(status_code=503, detail="Server not fully initialized.")
 
-    query = request.query.strip()
-    print(f"\n💬 Received query: '{query}'")
+    original_query = request.query.strip()
+    print(f"\n💬 Received original query: '{original_query}'")
 
-    greetings = ["hello", "hi", "hey", "greetings"]
-    if query.lower() in greetings:
-        return ChatResponse(
-            response="Hello! How can I help you with Madhya Pradesh labor laws?",
-            sources=[],
-        )
+    # --- Bilingual Logic ---
+    original_lang = detect_language(original_query, llm)
+    print(f"🌍 Detected language: {original_lang}")
 
-    # 1a. Generate Hypothetical Document for embedding
-    print("🧠 Generating hypothetical document for query (HyDE)...")
-    hypothetical_doc = generate_hypothetical_document(query, llm)
-    print(f"📝 Hypothetical Document Snippet: {hypothetical_doc[:150]}...")
+    if original_lang == 'hi':
+        processing_query = translate_text(original_query, "en", llm)
+        print(f"    -> Translated to English for processing: '{processing_query}'")
+    else:
+        processing_query = original_query
+    # --- End Bilingual Logic ---
 
-    # 1b. Retrieve documents using the HyDE content
+    print("🧠 Generating hypothetical document (HyDE)...")
+    hypothetical_doc = generate_hypothetical_document(processing_query, llm)
+    
     print("🔍 Retrieving documents using HyDE...")
     initial_docs = retriever.invoke(hypothetical_doc)
     print(f"✅ Found {len(initial_docs)} initial documents.")
 
     if not initial_docs:
-        return ChatResponse(
-            response="I couldn't find any information related to your query.",
-            sources=[],
-        )
+        return ChatResponse(response="I couldn't find any information related to your query.", sources=[])
 
-    # 2. Re-rank documents using the ORIGINAL query
-    reranked_docs = rerank_documents(query, initial_docs)
+    reranked_docs = rerank_documents(processing_query, initial_docs)
 
-    # 3. Select top documents for context
-    top_k = 4  # Increased K slightly for broader context
+    top_k = 4
     final_context_docs = reranked_docs[:top_k]
-    context_text = "\n\n---\n\n".join(
-        [doc.page_content for doc in final_context_docs]
-    )
+    
+    context_parts = []
+    for i, doc in enumerate(final_context_docs):
+        source_name = doc.metadata.get("source_collection", "Unknown")
+        source_link = doc.metadata.get("source_link", "Not Available")
+        context_part = f"[Source {i+1}: {source_name} | Link: {source_link}]\n{doc.page_content}"
+        context_parts.append(context_part)
+    context_text = "\n\n---\n\n".join(context_parts)
 
-    # 4. Create an improved prompt for synthesis
     prompt_template = """
-    You are a helpful assistant for labor laws in Madhya Pradesh, India.
-    Your goal is to answer the user's question based on the context provided below.
-    Do not say things like "Based on the provided context".
-    Synthesize and summarize the information from the context to provide a clear and helpful answer.
-    If the context contains relevant information, explain it in simple terms.
-    If the context does not contain enough information, state that you couldn't find specific details in the available documents, say "I'll report this to an admin". Do not invent information.
-    Cite your sources.
-    If a source has a valid link (not "Not Available"), you can include it in your citation.
+You are a helpful expert legal assistant for labour laws in Madhya Pradesh, India.
 
+### Response Rules:
+1. Always answer the user's question **based only on the provided CONTEXT**.
+2. Write in a **clear, concise, and step-by-step** format (use bullet points or numbered lists when appropriate).
+3. **Citations:**
+   - After every fact, cite the source in this format: [Source X].
+   - Do not invent or reorder source numbers. Only use the ones given in the CONTEXT.
+4. **Sources Section:**
+   - At the end of the answer, provide a "Sources" list.
+   - Each source must include its number, the **collection name**, and its **link**.
+   - Do not mention the same source more than once.
+   - Example:
+     Sources:
+     1. Shops & Establishments Act – https://docs.google.com/xxxx
+     2. Labour Notifications – https://drive.google.com/yyyy
+5. If the answer is **not in the context**:
+   - Say: "I cannot find this information in the provided documents."
+   - Suggest a reasonable next step (e.g., consulting the Labour Department, visiting labour.mponline.gov.in).
+   - End with: "I'll contact an admin."
+6. Keep answers professional, accurate, and user-friendly.
+
+### Additional Note:
+- Always mention labour.mponline.gov.in if users need to apply, register, or get official forms online.
+
+---
     CONTEXT:
     {context}
-
     QUESTION:
     {question}
-
     ANSWER:
     """
-    prompt = PromptTemplate(
-        template=prompt_template, input_variables=["context", "question"]
-    )
+    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
-    # 5. Create and invoke the RAG chain
     rag_chain = (
         {"context": lambda _: context_text, "question": RunnablePassthrough()}
         | prompt
@@ -208,19 +244,27 @@ async def chat_handler(request: ChatRequest):
     )
 
     print("🤖 Invoking LLM chain...")
-    answer = rag_chain.invoke(query)
-    print(f"✅ Generated answer: {answer}")
+    english_answer = rag_chain.invoke(processing_query)
+    print(f"✅ Generated English answer: {english_answer}")
 
-    # 6. Format sources
+    # --- Final Translation Step ---
+    if original_lang == 'hi':
+        final_answer = translate_text(english_answer, "hi", llm)
+        print(f"    -> Translated final answer back to Hindi.")
+    else:
+        final_answer = english_answer
+    # --- End Final Translation ---
+
     sources = [
-        {
-            "source_collection": doc.metadata.get("source_collection", "Unknown"),
-            "content_snippet": doc.page_content[:150] + "...",
-        }
+        Source(
+            source_collection=doc.metadata.get("source_collection", "Unknown"),
+            content_snippet=doc.page_content[:150] + "...",
+            source_link=doc.metadata.get("source_link")
+        )
         for doc in final_context_docs
     ]
 
-    return ChatResponse(response=answer, sources=list({v["source_collection"]: v for v in sources}.values())) # Return unique sources
+    return ChatResponse(response=final_answer, sources=sources)
 
 
 @app.get("/")
